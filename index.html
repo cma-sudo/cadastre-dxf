@@ -66,7 +66,7 @@ button{padding:10px 28px;border:none;border-radius:6px;font-family:var(--font);f
       <h1>Cadastre DXF</h1>
       <p>Generateur de fichiers DXF cadastraux pour Autodesk Revit</p>
     </div>
-    <span class="version">v2.1</span>
+    <span class="version">v3.0</span>
   </div>
 
   <div class="section">
@@ -125,8 +125,11 @@ button{padding:10px 28px;border:none;border-radius:6px;font-family:var(--font);f
     </div>
     <div class="stats" id="stats"></div>
     <div class="actions">
-      <button class="btn-primary" id="btn-download" onclick="downloadDxf()">Telecharger le fichier DXF</button>
-      <button class="btn-outline btn-small" onclick="copyCoords('both')">Copier les coordonnees</button>
+      <button class="btn-primary" id="btn-download" onclick="downloadDxf()">DXF Cadastre (1/1000)</button>
+      <button class="btn-primary" id="btn-situ" onclick="downloadSitu()" style="background:#2980b9">DXF Situation (1/5000)</button>
+      <button class="btn-outline btn-small" onclick="exportPDF('cad')">PDF 1/1000</button>
+      <button class="btn-outline btn-small" onclick="exportPDF('situ')">PDF 1/5000</button>
+      <button class="btn-outline btn-small" onclick="copyCoords('both')">Coordonnees</button>
     </div>
   </div>
 
@@ -298,7 +301,8 @@ async function getBatiments(bbox) {
 // ============================================================
 // GENERATION
 // ============================================================
-let lastDxfContent = null, lastFilename = '', originCoords = null;
+let lastDxfContent = null, lastSituContent = null, lastFilename = '', lastSituFilename = '', originCoords = null;
+let lastGeo = null, lastZone = null, lastParcelles = [], lastBatiments = [], lastFeuilles = [];
 
 async function generate() {
   const btn = document.getElementById('btn-generate');
@@ -374,7 +378,12 @@ async function generate() {
     for (const b of batiments) for (const ring of rings(b.geometry)) dxf.addLwPolyline('BATIMENTS', ring.map(c => rel(c)), true);
 
     lastDxfContent = dxf.generate();
-    lastFilename = `cadastre_${geo.city||'export'}_${zone}_${new Date().toISOString().slice(0,10)}.dxf`;
+    lastFilename = `cad1000_${geo.city||'export'}_${zone}_${new Date().toISOString().slice(0,10)}.dxf`;
+    lastGeo = geo; lastZone = zone; lastParcelles = allParcelles; lastBatiments = batiments; lastFeuilles = feuilles;
+
+    // Generer aussi le plan de situation (rayon 500m)
+    log('Generation plan de situation...');
+    await generateSitu(geo, zone, origin);
     setProgress(100);
 
     document.getElementById('coord-x').textContent = origin.x.toFixed(3);
@@ -392,6 +401,153 @@ async function generate() {
     showStatus(`Fichier DXF genere — ${allParcelles.length} parcelles, ${batiments.length} batiments\nProjection ${zone} (EPSG:${origin.epsg})\nOrigine : X=${origin.x.toFixed(3)}  Y=${origin.y.toFixed(3)}`, 'success');
   } catch (e) { showStatus('Erreur : ' + e.message, 'error'); console.error(e); }
   btn.disabled = false;
+}
+
+// ============================================================
+// PLAN DE SITUATION (situ5000)
+// ============================================================
+async function generateSitu(geo, zone, origin) {
+  try {
+    // Recuperer les feuilles dans un rayon de 500m
+    const situFeuilles = await getFeuillesInRadius(geo.lon, geo.lat, 500);
+    const situSections = [...new Set(situFeuilles.map(f => f.properties.section))];
+    const codeInsee = situFeuilles[0].properties.code_insee;
+
+    let situParcelles = [];
+    for (const sec of situSections) {
+      situParcelles = situParcelles.concat(await getParcelles(codeInsee, sec));
+    }
+
+    // Bbox elargie pour batiments
+    let sMinLon=Infinity,sMinLat=Infinity,sMaxLon=-Infinity,sMaxLat=-Infinity;
+    for (const p of situParcelles) for (const c of flatCoords(p.geometry)) { sMinLon=Math.min(sMinLon,c[0]);sMinLat=Math.min(sMinLat,c[1]);sMaxLon=Math.max(sMaxLon,c[0]);sMaxLat=Math.max(sMaxLat,c[1]); }
+    const ex2=0.002; sMinLon-=ex2;sMinLat-=ex2;sMaxLon+=ex2;sMaxLat+=ex2;
+    const situBatiments = await getBatiments([sMinLon,sMinLat,sMaxLon,sMaxLat]);
+
+    const ox = origin.x, oy = origin.y;
+    const rel = (c) => { const pr = lccProject(c[0],c[1],zone); return [pr.x - ox, pr.y - oy]; };
+
+    const dxf = new DxfWriter();
+    dxf.addLayer('PARCELLES',7); dxf.addLayer('BATIMENTS',1); dxf.addLayer('NUMEROS',3); dxf.addLayer('SECTIONS',5); dxf.addLayer('ORIGINE',6);
+    dxf.setInsBase(ox, oy);
+    dxf.addPoint('ORIGINE', 0, 0);
+    dxf.addText('ORIGINE', 5, -8, 4, `Origine: X=${ox.toFixed(3)} Y=${oy.toFixed(3)} (${zone})`);
+
+    for (const p of situParcelles) {
+      for (const ring of rings(p.geometry)) dxf.addLwPolyline('PARCELLES', ring.map(c => rel(c)), true);
+    }
+    for (const f of situFeuilles) {
+      const ctr=centroid(f.geometry), cp=lccProject(ctr[0],ctr[1],zone);
+      dxf.addText('SECTIONS', cp.x - ox, cp.y - oy, 8, f.properties.section);
+    }
+    for (const b of situBatiments) {
+      for (const ring of rings(b.geometry)) dxf.addLwPolyline('BATIMENTS', ring.map(c => rel(c)), true);
+    }
+
+    lastSituContent = dxf.generate();
+    lastSituFilename = `situ5000_${geo.city||'export'}_${zone}_${new Date().toISOString().slice(0,10)}.dxf`;
+    log(`Plan de situation: ${situParcelles.length} parcelles, ${situBatiments.length} batiments, ${situSections.length} sections`);
+  } catch(e) {
+    log(`Plan de situation: ${e.message}`);
+    lastSituContent = null;
+  }
+}
+
+function downloadSitu() {
+  if(!lastSituContent) { showStatus('Generez d\'abord un cadastre', 'error'); return; }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([lastSituContent],{type:'application/dxf'})); a.download=lastSituFilename; a.click();
+}
+
+function exportPDF(type) {
+  if(!lastGeo) { showStatus('Generez d\'abord un cadastre', 'error'); return; }
+
+  const isSitu = type === 'situ';
+  const parcelles = isSitu && lastSituContent ? lastParcelles : lastParcelles; // Use same data for preview
+  const batiments = lastBatiments;
+  const scale = isSitu ? 5000 : 1000;
+  const margin = 40;
+
+  // A4 landscape in pixels (300dpi equivalent for screen)
+  const pw = 1122, ph = 794;
+  const canvas = document.createElement('canvas');
+  canvas.width = pw; canvas.height = ph;
+  const ctx = canvas.getContext('2d');
+
+  // White background
+  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,pw,ph);
+
+  // Title block
+  ctx.fillStyle = '#000';
+  ctx.font = 'bold 16px Poppins, sans-serif';
+  ctx.fillText(`Plan ${isSitu ? 'de situation' : 'cadastral'} — ${lastGeo.label}`, margin, 30);
+  ctx.font = '10px JetBrains Mono, monospace';
+  ctx.fillStyle = '#666';
+  ctx.fillText(`Projection ${lastZone} | Echelle indicative 1/${scale} | ${new Date().toLocaleDateString('fr-FR')}`, margin, 48);
+  ctx.fillText(`Origine: X=${originCoords.x.toFixed(3)} Y=${originCoords.y.toFixed(3)}`, margin, 62);
+
+  // Draw area
+  const dx = margin, dy = 75, dw = pw - margin*2, dh = ph - 75 - margin;
+
+  // Compute bounds
+  let pts = [];
+  const zone = lastZone;
+  const projRings = (g) => rings(g).map(r => r.map(c => { const p = lccProject(c[0],c[1],zone); pts.push(p); return p; }));
+
+  const pR = lastParcelles.flatMap(p => projRings(p.geometry));
+  const bR = lastBatiments.flatMap(b => projRings(b.geometry));
+  if (!pts.length) return;
+
+  let mx=Infinity,my=Infinity,Mx=-Infinity,My=-Infinity;
+  for(const p of pts){mx=Math.min(mx,p.x);my=Math.min(my,p.y);Mx=Math.max(Mx,p.x);My=Math.max(My,p.y)}
+
+  if (isSitu) { // Expand for situation
+    const cx=(mx+Mx)/2, cy=(my+My)/2, expand=250;
+    mx=cx-expand; Mx=cx+expand; my=cy-expand; My=cy+expand;
+  }
+
+  const sc = Math.min(dw/(Mx-mx||1), dh/(My-my||1));
+  const ox2 = dx + (dw - (Mx-mx)*sc)/2;
+  const oy2 = dy + (dh - (My-my)*sc)/2;
+  const tx = p => ox2 + (p.x-mx)*sc;
+  const ty = p => oy2 + dh - (p.y-my)*sc;
+
+  // Parcelles
+  ctx.strokeStyle = '#888'; ctx.lineWidth = 0.5;
+  for(const r of pR){ctx.beginPath();r.forEach((p,i)=>{i?ctx.lineTo(tx(p),ty(p)):ctx.moveTo(tx(p),ty(p))});ctx.closePath();ctx.stroke()}
+
+  // Batiments
+  ctx.strokeStyle = '#333'; ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.lineWidth = 1;
+  for(const r of bR){ctx.beginPath();r.forEach((p,i)=>{i?ctx.lineTo(tx(p),ty(p)):ctx.moveTo(tx(p),ty(p))});ctx.closePath();ctx.fill();ctx.stroke()}
+
+  // Origin cross
+  const o = lccProject(lastGeo.lon, lastGeo.lat, zone);
+  const ocx = tx(o), ocy = ty(o);
+  ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(ocx-10,ocy);ctx.lineTo(ocx+10,ocy); ctx.moveTo(ocx,ocy-10);ctx.lineTo(ocx,ocy+10); ctx.stroke();
+  ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(ocx,ocy,3,0,Math.PI*2); ctx.fill();
+
+  // Scale bar
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+  ctx.fillStyle = '#000'; ctx.font = '9px JetBrains Mono, monospace';
+  const barLen = isSitu ? 100 : 50; // meters
+  const barPx = barLen * sc;
+  const bx = pw - margin - barPx, by = ph - 20;
+  ctx.beginPath(); ctx.moveTo(bx,by);ctx.lineTo(bx+barPx,by); ctx.moveTo(bx,by-5);ctx.lineTo(bx,by+5); ctx.moveTo(bx+barPx,by-5);ctx.lineTo(bx+barPx,by+5); ctx.stroke();
+  ctx.fillText(`${barLen} m`, bx + barPx/2 - 12, by - 8);
+
+  // Border
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5;
+  ctx.strokeRect(margin-5, 70, dw+10, dh+10);
+
+  // Footer
+  ctx.font = '8px Poppins, sans-serif'; ctx.fillStyle = '#999';
+  ctx.fillText('PK Archi — Donnees IGN / BDTOPO / BAN', margin, ph - 5);
+
+  // Download as PDF (via image)
+  const link = document.createElement('a');
+  link.download = `${isSitu?'situ5000':'cad1000'}_${lastGeo.city||'export'}_${new Date().toISOString().slice(0,10)}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
 }
 
 // ============================================================
