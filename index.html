@@ -6,6 +6,7 @@
 <title>Cadastre DXF — PK Archi</title>
 <link rel="icon" href="https://pk-archi.com/wp-content/uploads/2023/04/cropped-pka-1000x1000-2.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#ffffff;--card:#fafafa;--border:#e8e8e8;--text:#313131;--muted:#8a8a8a;--accent:#32373c;--red:#c0392b;--green:#27ae60;--blue:#2980b9;--font:'Poppins',sans-serif;--mono:'JetBrains Mono',monospace}
@@ -21,25 +22,27 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .section-title::after{content:'';flex:1;height:1px;background:var(--border)}
 .row{display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap}
 .field{flex:1;min-width:180px}
-.field label{display:block;font-size:11px;font-weight:500;color:var(--muted);margin-bottom:5px;letter-spacing:0.3px}
-input,select{width:100%;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font);font-size:13px;font-weight:400;outline:none;transition:border .2s}
+.field label{display:block;font-size:11px;font-weight:500;color:var(--muted);margin-bottom:5px}
+input,select{width:100%;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border .2s}
 input:focus,select:focus{border-color:var(--accent)}
 input::placeholder{color:#c0c0c0}
 select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238a8a8a' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
-button{padding:10px 28px;border:none;border-radius:6px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:0.3px}
+button{padding:10px 24px;border:none;border-radius:6px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
 .btn-primary{background:var(--accent);color:#fff}
-.btn-primary:hover{background:#454b52;transform:translateY(-1px);box-shadow:0 4px 12px rgba(50,55,60,.2)}
-.btn-primary:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-primary:hover{background:#454b52;transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-blue:hover{background:#3498db}
 .btn-outline{background:transparent;color:var(--accent);border:1.5px solid var(--border)}
-.btn-outline:hover{border-color:var(--accent);background:rgba(50,55,60,.04)}
-.btn-small{padding:7px 16px;font-size:11px}
-.log{font-family:var(--mono);font-size:11px;padding:14px 16px;border-radius:6px;margin-top:14px;white-space:pre-wrap;max-height:180px;overflow-y:auto;line-height:1.7;letter-spacing:-0.2px}
+.btn-outline:hover{border-color:var(--accent)}
+.btn-small{padding:7px 14px;font-size:11px}
+.log{font-family:var(--mono);font-size:11px;padding:14px 16px;border-radius:6px;margin-top:14px;white-space:pre-wrap;max-height:180px;overflow-y:auto;line-height:1.7}
 .log.info{background:#f0f4f8;border:1px solid #d6e0ea;color:var(--blue)}
 .log.error{background:#fdf2f2;border:1px solid #f0d0d0;color:var(--red)}
 .log.success{background:#f0faf4;border:1px solid #c8e6d0;color:var(--green)}
 .coords{display:flex;gap:10px;margin-bottom:14px}
 .coord-box{flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:12px;color:var(--accent);cursor:pointer;transition:all .2s}
-.coord-box:hover{border-color:var(--accent);background:#f5f5f5}
+.coord-box:hover{border-color:var(--accent)}
 .coord-box .lbl{font-family:var(--font);font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-right:4px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-bottom:16px}
 .stat{padding:12px;border-radius:6px;background:var(--card);border:1px solid var(--border);text-align:center}
@@ -49,10 +52,11 @@ button{padding:10px 28px;border:none;border-radius:6px;font-family:var(--font);f
 .progress-bar{height:100%;background:var(--accent);border-radius:1px;transition:width .3s;width:0}
 #map-preview{width:100%;height:320px;border-radius:6px;background:#f8f8f8;border:1px solid var(--border);margin-top:16px}
 .hidden{display:none}
-.toast{position:fixed;bottom:20px;right:20px;padding:10px 18px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:11px;font-weight:500;border-radius:6px;opacity:0;transition:opacity .3s;z-index:100;box-shadow:0 4px 16px rgba(0,0,0,.15)}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 18px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:11px;border-radius:6px;opacity:0;transition:opacity .3s;z-index:100}
 .toast.show{opacity:1}
-.actions{display:flex;gap:10px;margin-top:16px}
-.divider{height:1px;background:var(--border);margin:24px 0}
+.actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.export-group{display:flex;gap:6px;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;align-items:center}
+.export-group .label{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-right:4px}
 .footer{text-align:center;font-size:11px;color:var(--muted);margin-top:48px;padding-top:20px;border-top:1px solid var(--border)}
 .footer a{color:var(--accent);text-decoration:none}
 .footer a:hover{text-decoration:underline}
@@ -66,7 +70,7 @@ button{padding:10px 28px;border:none;border-radius:6px;font-family:var(--font);f
       <h1>Cadastre DXF</h1>
       <p>Generateur de fichiers DXF cadastraux pour Autodesk Revit</p>
     </div>
-    <span class="version">v3.0</span>
+    <span class="version">v3.1</span>
   </div>
 
   <div class="section">
@@ -78,7 +82,7 @@ button{padding:10px 28px;border:none;border-radius:6px;font-family:var(--font);f
       </div>
       <div class="field" style="flex:1;min-width:110px">
         <label>Rayon (m)</label>
-        <input type="number" id="radius" value="0" min="0" max="2000" step="50" title="0 = section unique, >0 = multi-sections">
+        <input type="number" id="radius" value="0" min="0" max="2000" step="50">
       </div>
     </div>
     <div class="row">
@@ -98,7 +102,7 @@ button{padding:10px 28px;border:none;border-radius:6px;font-family:var(--font);f
         </select>
       </div>
       <div class="field" style="flex:0;min-width:auto;display:flex;align-items:flex-end">
-        <button class="btn-primary" id="btn-generate" onclick="generate()">Generer le DXF</button>
+        <button class="btn-primary" id="btn-generate" onclick="generate()">Generer</button>
       </div>
     </div>
     <div class="progress"><div class="progress-bar" id="progress"></div></div>
@@ -109,26 +113,23 @@ button{padding:10px 28px;border:none;border-radius:6px;font-family:var(--font);f
     <div class="section-title">Resultats</div>
     <div id="coords-section" class="hidden">
       <div class="coords">
-        <div class="coord-box" onclick="copyCoords('x')" title="Cliquer pour copier">
-          <span class="lbl">X</span>
-          <span id="coord-x">—</span>
-        </div>
-        <div class="coord-box" onclick="copyCoords('y')" title="Cliquer pour copier">
-          <span class="lbl">Y</span>
-          <span id="coord-y">—</span>
-        </div>
-        <div class="coord-box" onclick="copyCoords('both')" title="Cliquer pour copier X,Y">
-          <span class="lbl">Proj.</span>
-          <span id="coord-proj">—</span>
-        </div>
+        <div class="coord-box" onclick="copyCoords('x')"><span class="lbl">X</span><span id="coord-x">—</span></div>
+        <div class="coord-box" onclick="copyCoords('y')"><span class="lbl">Y</span><span id="coord-y">—</span></div>
+        <div class="coord-box" onclick="copyCoords('both')"><span class="lbl">Proj.</span><span id="coord-proj">—</span></div>
       </div>
     </div>
     <div class="stats" id="stats"></div>
     <div class="actions">
-      <button class="btn-primary" id="btn-download" onclick="downloadDxf()">DXF Cadastre (1/1000)</button>
-      <button class="btn-primary" id="btn-situ" onclick="downloadSitu()" style="background:#2980b9">DXF Situation (1/5000)</button>
-      <button class="btn-outline btn-small" onclick="exportPDF('cad')">PDF 1/1000</button>
-      <button class="btn-outline btn-small" onclick="exportPDF('situ')">PDF 1/5000</button>
+      <div class="export-group">
+        <span class="label">DXF</span>
+        <button class="btn-primary btn-small" onclick="downloadDxf('cad')">Cadastre 1/1000</button>
+        <button class="btn-blue btn-small" onclick="downloadDxf('situ')">Situation 1/5000</button>
+      </div>
+      <div class="export-group">
+        <span class="label">PDF</span>
+        <button class="btn-outline btn-small" onclick="exportPDF('cad')">Cadastre 1/1000</button>
+        <button class="btn-outline btn-small" onclick="exportPDF('situ')">Situation 1/5000</button>
+      </div>
       <button class="btn-outline btn-small" onclick="copyCoords('both')">Coordonnees</button>
     </div>
   </div>
@@ -141,464 +142,359 @@ button{padding:10px 28px;border:none;border-radius:6px;font-family:var(--font);f
     Donnees <a href="https://apicarto.ign.fr" target="_blank">IGN</a> &middot; <a href="https://data.geopf.fr" target="_blank">BDTOPO</a> &middot; <a href="https://adresse.data.gouv.fr" target="_blank">BAN</a>
   </div>
 </div>
-
 <div class="toast" id="toast"></div>
 
 <script>
-// ============================================================
-// PROJECTIONS CC42-CC50 (Lambert Conique Conforme)
-// ============================================================
-const CC_ZONES = {
-  CC42:{lat0:42,Y0:1200000,epsg:3942}, CC43:{lat0:43,Y0:2200000,epsg:3943},
-  CC44:{lat0:44,Y0:3200000,epsg:3944}, CC45:{lat0:45,Y0:4200000,epsg:3945},
-  CC46:{lat0:46,Y0:5200000,epsg:3946}, CC47:{lat0:47,Y0:6200000,epsg:3947},
-  CC48:{lat0:48,Y0:7200000,epsg:3948}, CC49:{lat0:49,Y0:8200000,epsg:3949},
-  CC50:{lat0:50,Y0:9200000,epsg:3950},
-};
+// ── PROJECTIONS CC42-CC50 ────────────────────────────────────
+const CC={CC42:{l:42,y:1200000},CC43:{l:43,y:2200000},CC44:{l:44,y:3200000},CC45:{l:45,y:4200000},CC46:{l:46,y:5200000},CC47:{l:47,y:6200000},CC48:{l:48,y:7200000},CC49:{l:49,y:8200000},CC50:{l:50,y:9200000}};
+const E={a:6378137,f:1/298.257222101};E.e2=2*E.f-E.f*E.f;E.e=Math.sqrt(E.e2);
+const rad=d=>d*Math.PI/180;
+function getZone(lat){for(let z=42;z<=50;z++)if(lat>=z-0.75&&lat<=z+0.75)return'CC'+z;return lat<42?'CC42':'CC50'}
 
-const GRS80 = {a:6378137, f:1/298.257222101};
-GRS80.e2 = 2*GRS80.f - GRS80.f*GRS80.f;
-GRS80.e = Math.sqrt(GRS80.e2);
-
-function getZoneForLat(lat) {
-  if (lat < 41.25) return 'CC42';
-  for (let z = 42; z <= 50; z++) {
-    if (lat >= z - 0.75 && lat <= z + 0.75) return 'CC' + z;
-  }
-  return 'CC50';
+function proj(lon,lat,zone){
+  const z=CC[zone],{a,e,e2}=E,lon0=rad(3),lat0=rad(z.l),lat1=rad(z.l-0.75),lat2=rad(z.l+0.75);
+  const sn=p=>Math.sin(p), L=p=>{const s=e*sn(p);return Math.log(Math.tan(Math.PI/4+p/2)*Math.pow((1-s)/(1+s),e/2))};
+  const gN=p=>a/Math.sqrt(1-e2*sn(p)*sn(p));
+  const L1=L(lat1),L2=L(lat2),L0=L(lat0),N1=gN(lat1)*Math.cos(lat1),N2=gN(lat2)*Math.cos(lat2);
+  const n=(Math.log(N2)-Math.log(N1))/(L1-L2),C2=N1/n*Math.exp(n*L1),rho0=C2*Math.exp(-n*L0);
+  const rho=C2*Math.exp(-n*L(rad(lat))),theta=n*(rad(lon)-lon0);
+  return{x:1700000+rho*Math.sin(theta),y:z.y+rho0-rho*Math.cos(theta)};
 }
 
-function deg2rad(d) { return d * Math.PI / 180; }
+// ── DXF R12 (compatibilite maximale) ─────────────────────────
+function makeDxf(layers, polylines, texts, points, insBase) {
+  let h = 1;
+  const nh = () => (h++).toString(16).toUpperCase();
+  const g = (c,v) => `  ${c}\n${v}\n`;
+  let d = '';
 
-function lccProject(lon, lat, zone) {
-  const z = CC_ZONES[zone];
-  const {a, e, e2} = GRS80;
-  const lon0 = deg2rad(3);
-  const lat0 = deg2rad(z.lat0);
-  const lat1 = deg2rad(z.lat0 - 0.75);
-  const lat2 = deg2rad(z.lat0 + 0.75);
-  const X0 = 1700000;
-  const Y0 = z.Y0;
+  // Compute extents
+  let xn=1e9,yn=1e9,xx=-1e9,yx=-1e9;
+  for(const p of polylines) for(const v of p.pts){xn=Math.min(xn,v[0]);yn=Math.min(yn,v[1]);xx=Math.max(xx,v[0]);yx=Math.max(yx,v[1]);}
+  if(xn>1e8){xn=-100;yn=-100;xx=100;yx=100;}
 
-  const sinLat = (phi) => Math.sin(phi);
-  const L = (phi) => {
-    const sp = e * sinLat(phi);
-    return Math.log(Math.tan(Math.PI/4 + phi/2) * Math.pow((1-sp)/(1+sp), e/2));
-  };
-  const gN = (phi) => a / Math.sqrt(1 - e2 * sinLat(phi) * sinLat(phi));
+  // HEADER (R12)
+  d+=g(0,'SECTION')+g(2,'HEADER');
+  d+=g(9,'$ACADVER')+g(1,'AC1009');
+  d+=g(9,'$INSUNITS')+g(70,6);
+  d+=g(9,'$INSBASE')+g(10,insBase[0].toFixed(4))+g(20,insBase[1].toFixed(4))+g(30,'0.0');
+  d+=g(9,'$EXTMIN')+g(10,xn.toFixed(4))+g(20,yn.toFixed(4))+g(30,'0.0');
+  d+=g(9,'$EXTMAX')+g(10,xx.toFixed(4))+g(20,yx.toFixed(4))+g(30,'0.0');
+  d+=g(9,'$LIMMIN')+g(10,xn.toFixed(4))+g(20,yn.toFixed(4));
+  d+=g(9,'$LIMMAX')+g(10,xx.toFixed(4))+g(20,yx.toFixed(4));
+  d+=g(0,'ENDSEC');
 
-  const L1 = L(lat1), L2 = L(lat2), L0 = L(lat0);
-  const N1 = gN(lat1) * Math.cos(lat1);
-  const N2 = gN(lat2) * Math.cos(lat2);
-  const n = (Math.log(N2) - Math.log(N1)) / (L1 - L2);
-  const C = N1 / n * Math.exp(n * L1);
-  const rho0 = C * Math.exp(-n * L0);
-  const latR = deg2rad(lat);
-  const lonR = deg2rad(lon);
-  const rho = C * Math.exp(-n * L(latR));
-  const theta = n * (lonR - lon0);
-  return {x: X0 + rho * Math.sin(theta), y: Y0 + rho0 - rho * Math.cos(theta), zone, epsg: z.epsg};
-}
+  // TABLES
+  d+=g(0,'SECTION')+g(2,'TABLES');
+  d+=g(0,'TABLE')+g(2,'LTYPE')+g(70,1);
+  d+=g(0,'LTYPE')+g(2,'CONTINUOUS')+g(70,0)+g(3,'Solid line')+g(72,65)+g(73,0)+g(40,'0.0');
+  d+=g(0,'ENDTAB');
+  d+=g(0,'TABLE')+g(2,'LAYER')+g(70,layers.length);
+  for(const l of layers) d+=g(0,'LAYER')+g(2,l.name)+g(70,0)+g(62,l.color)+g(6,'CONTINUOUS');
+  d+=g(0,'ENDTAB');
+  d+=g(0,'ENDSEC');
 
-// ============================================================
-// DXF GENERATOR
-// ============================================================
-class DxfWriter {
-  constructor() { this.handle = 100; this.entities = []; this.layers = new Map(); this.insBase = [0,0]; this.allPts = []; }
-  nextHandle() { return (this.handle++).toString(16).toUpperCase(); }
-  addLayer(name, color) { this.layers.set(name, color); }
-  setInsBase(x, y) { this.insBase = [x, y]; }
-  trackPt(x, y) { this.allPts.push([x, y]); }
-  g(code, value) { return `  ${code}\r\n${value}\r\n`; }
+  // BLOCKS
+  d+=g(0,'SECTION')+g(2,'BLOCKS')+g(0,'ENDSEC');
 
-  addLwPolyline(layer, points, closed = true) {
-    const h = this.nextHandle();
-    let e = this.g(0,'LWPOLYLINE')+this.g(5,h)+this.g(100,'AcDbEntity')+this.g(8,layer)+this.g(100,'AcDbPolyline')+this.g(90,points.length)+this.g(70,closed?1:0);
-    for (const p of points) { e += this.g(10,p[0].toFixed(4))+this.g(20,p[1].toFixed(4)); this.trackPt(p[0],p[1]); }
-    this.entities.push(e);
+  // ENTITIES (R12: POLYLINE/VERTEX/SEQEND)
+  d+=g(0,'SECTION')+g(2,'ENTITIES');
+
+  for(const p of polylines) {
+    d+=g(0,'POLYLINE')+g(8,p.layer)+g(66,1)+g(70,p.closed?1:0);
+    for(const v of p.pts) d+=g(0,'VERTEX')+g(8,p.layer)+g(10,v[0].toFixed(4))+g(20,v[1].toFixed(4));
+    d+=g(0,'SEQEND')+g(8,p.layer);
   }
 
-  addText(layer, x, y, height, text, rotation = 0) {
-    const h = this.nextHandle();
-    this.entities.push(this.g(0,'TEXT')+this.g(5,h)+this.g(100,'AcDbEntity')+this.g(8,layer)+this.g(100,'AcDbText')+this.g(10,x.toFixed(4))+this.g(20,y.toFixed(4))+this.g(40,height.toFixed(2))+this.g(1,text)+this.g(50,rotation.toFixed(1))+this.g(100,'AcDbText'));
+  for(const t of texts) {
+    d+=g(0,'TEXT')+g(8,t.layer)+g(10,t.x.toFixed(4))+g(20,t.y.toFixed(4))+g(40,t.h.toFixed(2))+g(1,t.text);
   }
 
-  addPoint(layer, x, y) {
-    const h = this.nextHandle();
-    this.entities.push(this.g(0,'POINT')+this.g(5,h)+this.g(100,'AcDbEntity')+this.g(8,layer)+this.g(100,'AcDbPoint')+this.g(10,x.toFixed(4))+this.g(20,y.toFixed(4)));
+  for(const p of points) {
+    d+=g(0,'POINT')+g(8,p.layer)+g(10,p.x.toFixed(4))+g(20,p.y.toFixed(4));
   }
 
-  generate() {
-    // Compute extents
-    let xmin=Infinity,ymin=Infinity,xmax=-Infinity,ymax=-Infinity;
-    for(const p of this.allPts){xmin=Math.min(xmin,p[0]);ymin=Math.min(ymin,p[1]);xmax=Math.max(xmax,p[0]);ymax=Math.max(ymax,p[1]);}
-    if(!isFinite(xmin)){xmin=-100;ymin=-100;xmax=100;ymax=100;}
-    let d = '';
-    d += this.g(0,'SECTION')+this.g(2,'HEADER');
-    d += this.g(9,'$ACADVER')+this.g(1,'AC1027');
-    d += this.g(9,'$INSUNITS')+this.g(70,6);
-    d += this.g(9,'$INSBASE')+this.g(10,this.insBase[0].toFixed(4))+this.g(20,this.insBase[1].toFixed(4))+this.g(30,'0.0');
-    d += this.g(9,'$EXTMIN')+this.g(10,xmin.toFixed(4))+this.g(20,ymin.toFixed(4))+this.g(30,'0.0');
-    d += this.g(9,'$EXTMAX')+this.g(10,xmax.toFixed(4))+this.g(20,ymax.toFixed(4))+this.g(30,'0.0');
-    d += this.g(9,'$LIMMIN')+this.g(10,xmin.toFixed(4))+this.g(20,ymin.toFixed(4));
-    d += this.g(9,'$LIMMAX')+this.g(10,xmax.toFixed(4))+this.g(20,ymax.toFixed(4));
-    d += this.g(0,'ENDSEC');
-    d += this.g(0,'SECTION')+this.g(2,'TABLES');
-    d += this.g(0,'TABLE')+this.g(2,'VPORT')+this.g(5,this.nextHandle())+this.g(70,0)+this.g(0,'ENDTAB');
-    d += this.g(0,'TABLE')+this.g(2,'LTYPE')+this.g(5,this.nextHandle())+this.g(70,1)+this.g(0,'LTYPE')+this.g(5,this.nextHandle())+this.g(2,'Continuous')+this.g(70,0)+this.g(3,'Solid line')+this.g(72,65)+this.g(73,0)+this.g(40,'0.0')+this.g(0,'ENDTAB');
-    d += this.g(0,'TABLE')+this.g(2,'LAYER')+this.g(5,this.nextHandle())+this.g(70,this.layers.size);
-    for (const [name, color] of this.layers) d += this.g(0,'LAYER')+this.g(5,this.nextHandle())+this.g(100,'AcDbSymbolTableRecord')+this.g(100,'AcDbLayerTableRecord')+this.g(2,name)+this.g(70,0)+this.g(62,color)+this.g(6,'Continuous');
-    d += this.g(0,'ENDTAB');
-    d += this.g(0,'TABLE')+this.g(2,'STYLE')+this.g(5,this.nextHandle())+this.g(70,0)+this.g(0,'ENDTAB');
-    d += this.g(0,'ENDSEC');
-    d += this.g(0,'SECTION')+this.g(2,'BLOCKS')+this.g(0,'ENDSEC');
-    d += this.g(0,'SECTION')+this.g(2,'ENTITIES');
-    for (const e of this.entities) d += e;
-    d += this.g(0,'ENDSEC')+this.g(0,'EOF');
-    return d;
-  }
+  d+=g(0,'ENDSEC')+g(0,'EOF');
+  return d;
 }
 
-// ============================================================
-// API
-// ============================================================
-async function geocode(address) {
-  const r = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(address)}&limit=1`);
-  const d = await r.json();
-  if (!d.features?.length) throw new Error('Adresse non trouvee');
-  const f = d.features[0];
-  return {lon:f.geometry.coordinates[0], lat:f.geometry.coordinates[1], label:f.properties.label, city:f.properties.city, postcode:f.properties.postcode};
-}
+// ── API ──────────────────────────────────────────────────────
+async function geocode(a){const r=await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(a)}&limit=1`);const d=await r.json();if(!d.features?.length)throw new Error('Adresse non trouvee');const f=d.features[0];return{lon:f.geometry.coordinates[0],lat:f.geometry.coordinates[1],label:f.properties.label,city:f.properties.city,postcode:f.properties.postcode,citycode:f.properties.citycode}}
+async function getFeuilles(lon,lat){const r=await fetch(`https://apicarto.ign.fr/api/cadastre/feuille?geom=${JSON.stringify({type:'Point',coordinates:[lon,lat]})}`);const d=await r.json();if(!d.features?.length)throw new Error('Aucune feuille');return d.features}
+async function getFeuillesRadius(lon,lat,radius){if(radius<=0)return getFeuilles(lon,lat);const dl=radius/111320,dn=radius/(111320*Math.cos(rad(lat)));const r=await fetch(`https://apicarto.ign.fr/api/cadastre/feuille?geom=${JSON.stringify({type:'Polygon',coordinates:[[[lon-dn,lat-dl],[lon+dn,lat-dl],[lon+dn,lat+dl],[lon-dn,lat+dl],[lon-dn,lat-dl]]]})}`);const d=await r.json();if(!d.features?.length)throw new Error('Aucune feuille dans le rayon');return d.features}
+async function getParcelles(code,sec){const r=await fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?code_insee=${code}&section=${sec}`);return(await r.json()).features||[]}
+async function getBatiments(bb){const r=await fetch(`https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typenames=BDTOPO_V3:batiment&outputFormat=application/json&bbox=${bb.join(',')},EPSG:4326&count=1000`);return(await r.json()).features||[]}
 
-async function getFeuilles(lon, lat) {
-  const r = await fetch(`https://apicarto.ign.fr/api/cadastre/feuille?geom=${JSON.stringify({type:'Point',coordinates:[lon,lat]})}`);
-  const d = await r.json();
-  if (!d.features?.length) throw new Error('Aucune feuille cadastrale trouvee');
-  return d.features;
-}
+// ── HELPERS ──────────────────────────────────────────────────
+function flatC(g){const r=[];(function w(a){if(typeof a[0]==='number'){r.push(a);return}for(const x of a)w(x)})(g.coordinates);return r}
+function ringsOf(g){const r=[];if(g.type==='Polygon')g.coordinates.forEach(x=>r.push(x));else if(g.type==='MultiPolygon')g.coordinates.forEach(p=>p.forEach(x=>r.push(x)));return r}
+function centroidOf(g){const p=flatC(g);let x=0,y=0;for(const c of p){x+=c[0];y+=c[1]}return[x/p.length,y/p.length]}
+function bbox(features){let a=Infinity,b=Infinity,c=-Infinity,d=-Infinity;for(const f of features)for(const p of flatC(f.geometry)){a=Math.min(a,p[0]);b=Math.min(b,p[1]);c=Math.max(c,p[0]);d=Math.max(d,p[1])}return[a,b,c,d]}
+function showStatus(m,t){const el=document.getElementById('status');el.textContent=m;el.className=`log ${t}`;el.classList.remove('hidden')}
+function log(m){const el=document.getElementById('status');el.textContent=(el.textContent?el.textContent+'\n':'')+m}
+function setProgress(p){document.getElementById('progress').style.width=p+'%'}
 
-async function getFeuillesInRadius(lon, lat, radius) {
-  if (radius <= 0) return getFeuilles(lon, lat);
-  const dlat = radius/111320, dlon = radius/(111320*Math.cos(deg2rad(lat)));
-  const bbox = {type:'Polygon',coordinates:[[[lon-dlon,lat-dlat],[lon+dlon,lat-dlat],[lon+dlon,lat+dlat],[lon-dlon,lat+dlat],[lon-dlon,lat-dlat]]]};
-  const r = await fetch(`https://apicarto.ign.fr/api/cadastre/feuille?geom=${JSON.stringify(bbox)}`);
-  const d = await r.json();
-  if (!d.features?.length) throw new Error('Aucune feuille dans le rayon');
-  return d.features;
-}
+// ── STATE ────────────────────────────────────────────────────
+let cadDxf=null,situDxf=null,cadName='',situName='',originCoords=null;
+let S={}; // stored data for PDF
 
-async function getParcelles(codeInsee, section) {
-  const r = await fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?code_insee=${codeInsee}&section=${section}`);
-  return (await r.json()).features || [];
-}
-
-async function getBatiments(bbox) {
-  const [xmin,ymin,xmax,ymax] = bbox;
-  const r = await fetch(`https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typenames=BDTOPO_V3:batiment&outputFormat=application/json&bbox=${xmin},${ymin},${xmax},${ymax},EPSG:4326&count=500`);
-  return (await r.json()).features || [];
-}
-
-// ============================================================
-// GENERATION
-// ============================================================
-let lastDxfContent = null, lastSituContent = null, lastFilename = '', lastSituFilename = '', originCoords = null;
-let lastGeo = null, lastZone = null, lastParcelles = [], lastBatiments = [], lastFeuilles = [];
-
-async function generate() {
-  const btn = document.getElementById('btn-generate');
-  const results = document.getElementById('results');
-  const address = document.getElementById('address').value.trim();
-  const radiusVal = parseInt(document.getElementById('radius').value) || 0;
-  const projChoice = document.getElementById('projection').value;
-  if (!address) { showStatus('Veuillez entrer une adresse.', 'error'); return; }
-
-  btn.disabled = true;
-  results.classList.add('hidden');
-  document.getElementById('map-preview').classList.add('hidden');
-  showStatus('Geocodage...', 'info');
-  setProgress(10);
+// ── GENERATE ─────────────────────────────────────────────────
+async function generate(){
+  const btn=document.getElementById('btn-generate'), res=document.getElementById('results');
+  const address=document.getElementById('address').value.trim();
+  const radiusVal=parseInt(document.getElementById('radius').value)||0;
+  const projChoice=document.getElementById('projection').value;
+  if(!address){showStatus('Entrez une adresse','error');return}
+  btn.disabled=true; res.classList.add('hidden'); document.getElementById('map-preview').classList.add('hidden');
+  showStatus('Geocodage...','info'); setProgress(10);
 
   try {
     const geo = await geocode(address);
-    log(`${geo.label}`);
-    setProgress(20);
+    log(geo.label); setProgress(20);
 
-    const zone = projChoice === 'auto' ? getZoneForLat(geo.lat) : projChoice;
-    const origin = lccProject(geo.lon, geo.lat, zone);
-    originCoords = origin;
-    log(`Projection ${zone} (EPSG:${origin.epsg}) — X: ${origin.x.toFixed(3)}  Y: ${origin.y.toFixed(3)}`);
-    setProgress(30);
+    const zone = projChoice==='auto' ? getZone(geo.lat) : projChoice;
+    const o = proj(geo.lon,geo.lat,zone);
+    originCoords = {x:o.x, y:o.y, zone};
+    log(`${zone} — X:${o.x.toFixed(3)} Y:${o.y.toFixed(3)}`); setProgress(25);
 
-    log('Feuilles cadastrales...');
-    const feuilles = await getFeuillesInRadius(geo.lon, geo.lat, radiusVal);
-    const sections = [...new Set(feuilles.map(f => f.properties.section))];
-    const codeInsee = feuilles[0].properties.code_insee;
-    log(`${feuilles.length} feuille(s), ${sections.length} section(s) : ${sections.join(', ')}`);
-    setProgress(40);
+    // Feuilles cadastrales
+    log('Feuilles...');
+    const feuilles = await getFeuillesRadius(geo.lon,geo.lat,radiusVal);
+    const sections=[...new Set(feuilles.map(f=>f.properties.section))];
+    const codeInsee=feuilles[0].properties.code_insee;
+    log(`${sections.length} section(s): ${sections.join(', ')}`); setProgress(35);
 
+    // Parcelles
     log('Parcelles...');
-    let allParcelles = [];
-    for (let i = 0; i < sections.length; i++) {
-      allParcelles = allParcelles.concat(await getParcelles(codeInsee, sections[i]));
-      setProgress(40 + (i+1)/sections.length * 20);
-    }
-    log(`${allParcelles.length} parcelles`);
-    setProgress(60);
+    let parcelles=[];
+    for(let i=0;i<sections.length;i++){parcelles=parcelles.concat(await getParcelles(codeInsee,sections[i]));setProgress(35+(i+1)/sections.length*15)}
+    log(`${parcelles.length} parcelles`); setProgress(50);
 
-    let minLon=Infinity,minLat=Infinity,maxLon=-Infinity,maxLat=-Infinity;
-    for (const p of allParcelles) for (const c of flatCoords(p.geometry)) { minLon=Math.min(minLon,c[0]);minLat=Math.min(minLat,c[1]);maxLon=Math.max(maxLon,c[0]);maxLat=Math.max(maxLat,c[1]); }
-    const ex=0.0005; minLon-=ex;minLat-=ex;maxLon+=ex;maxLat+=ex;
+    // Batiments (bbox parcelles + marge)
+    const bb=bbox(parcelles); const ex=0.001;
+    const batBbox=[bb[0]-ex,bb[1]-ex,bb[2]+ex,bb[3]+ex];
+    log('Batiments...');
+    const batiments=await getBatiments(batBbox);
+    log(`${batiments.length} batiments`); setProgress(60);
 
-    log('Batiments BDTOPO...');
-    const batiments = await getBatiments([minLon,minLat,maxLon,maxLat]);
-    log(`${batiments.length} batiments`);
-    setProgress(80);
+    // Situation elargie (rayon 500m)
+    log('Plan de situation...');
+    const situFeuilles=await getFeuillesRadius(geo.lon,geo.lat,500);
+    const situSections=[...new Set(situFeuilles.map(f=>f.properties.section))];
+    let situParcelles=[];
+    for(const sec of situSections) situParcelles=situParcelles.concat(await getParcelles(codeInsee,sec));
+    const situBb=bbox(situParcelles); const ex2=0.003;
+    const situBatiments=await getBatiments([situBb[0]-ex2,situBb[1]-ex2,situBb[2]+ex2,situBb[3]+ex2]);
+    log(`Situation: ${situParcelles.length} parcelles, ${situBatiments.length} batiments`); setProgress(75);
 
+    // Store for PDF
+    S={geo,zone,o,parcelles,batiments,feuilles,situParcelles,situBatiments,situFeuilles,codeInsee,sections,situSections};
+
+    // Build DXF cad1000
     log('Generation DXF...');
-    const dxf = new DxfWriter();
-    dxf.addLayer('PARCELLES',7); dxf.addLayer('BATIMENTS',1); dxf.addLayer('NUMEROS',3); dxf.addLayer('SECTIONS',5); dxf.addLayer('ORIGINE',6);
+    const layers=[{name:'PARCELLES',color:7},{name:'BATIMENTS',color:1},{name:'NUMEROS',color:3},{name:'SECTIONS',color:5},{name:'ORIGINE',color:6}];
+    const ox=o.x,oy=o.y;
+    const r=(c)=>{const p=proj(c[0],c[1],zone);return[p.x-ox,p.y-oy]};
 
-    // Recentrer autour de l'origine (0,0) pour compatibilite maximale
-    const ox = origin.x, oy = origin.y;
-    const rel = (c) => { const pr = lccProject(c[0],c[1],zone); return [pr.x - ox, pr.y - oy]; };
+    let polys=[],txts=[],pts=[{layer:'ORIGINE',x:0,y:0}];
+    txts.push({layer:'ORIGINE',x:2,y:-3,h:1.5,text:`X=${ox.toFixed(3)} Y=${oy.toFixed(3)} (${zone})`});
 
-    // Stocker l'offset dans le header DXF
-    dxf.setInsBase(ox, oy);
-
-    // Point origine a (0,0) dans le DXF
-    dxf.addPoint('ORIGINE', 0, 0);
-    dxf.addText('ORIGINE', 2, -3, 1.5, `Origine: X=${ox.toFixed(3)} Y=${oy.toFixed(3)} (${zone})`);
-
-    for (const p of allParcelles) {
-      for (const ring of rings(p.geometry)) dxf.addLwPolyline('PARCELLES', ring.map(c => rel(c)), true);
-      const ctr = centroid(p.geometry), cp = lccProject(ctr[0],ctr[1],zone);
-      if (p.properties.numero) dxf.addText('NUMEROS', cp.x - ox, cp.y - oy, 1.5, p.properties.numero);
+    for(const p of parcelles){
+      for(const ring of ringsOf(p.geometry)) polys.push({layer:'PARCELLES',pts:ring.map(r),closed:true});
+      const c=centroidOf(p.geometry),cp=proj(c[0],c[1],zone);
+      if(p.properties.numero) txts.push({layer:'NUMEROS',x:cp.x-ox,y:cp.y-oy,h:1.5,text:p.properties.numero});
     }
-    for (const f of feuilles) { const ctr=centroid(f.geometry), cp=lccProject(ctr[0],ctr[1],zone); dxf.addText('SECTIONS', cp.x - ox, cp.y - oy, 3, f.properties.section); }
-    for (const b of batiments) for (const ring of rings(b.geometry)) dxf.addLwPolyline('BATIMENTS', ring.map(c => rel(c)), true);
+    for(const f of feuilles){const c=centroidOf(f.geometry),cp=proj(c[0],c[1],zone);txts.push({layer:'SECTIONS',x:cp.x-ox,y:cp.y-oy,h:3,text:f.properties.section})}
+    for(const b of batiments) for(const ring of ringsOf(b.geometry)) polys.push({layer:'BATIMENTS',pts:ring.map(r),closed:true});
 
-    lastDxfContent = dxf.generate();
-    lastFilename = `cad1000_${geo.city||'export'}_${zone}_${new Date().toISOString().slice(0,10)}.dxf`;
-    lastGeo = geo; lastZone = zone; lastParcelles = allParcelles; lastBatiments = batiments; lastFeuilles = feuilles;
+    cadDxf=makeDxf(layers,polys,txts,pts,[ox,oy]);
+    cadName=`cad1000_${geo.city||'export'}_${zone}_${new Date().toISOString().slice(0,10)}.dxf`;
+    setProgress(85);
 
-    // Generer aussi le plan de situation (rayon 500m)
-    log('Generation plan de situation...');
-    await generateSitu(geo, zone, origin);
-    setProgress(100);
+    // Build DXF situ5000
+    let sPolys=[],sTxts=[],sPts=[{layer:'ORIGINE',x:0,y:0}];
+    sTxts.push({layer:'ORIGINE',x:5,y:-8,h:4,text:`X=${ox.toFixed(3)} Y=${oy.toFixed(3)} (${zone})`});
+    for(const p of situParcelles) for(const ring of ringsOf(p.geometry)) sPolys.push({layer:'PARCELLES',pts:ring.map(r),closed:true});
+    for(const f of situFeuilles){const c=centroidOf(f.geometry),cp=proj(c[0],c[1],zone);sTxts.push({layer:'SECTIONS',x:cp.x-ox,y:cp.y-oy,h:8,text:f.properties.section})}
+    for(const b of situBatiments) for(const ring of ringsOf(b.geometry)) sPolys.push({layer:'BATIMENTS',pts:ring.map(r),closed:true});
 
-    document.getElementById('coord-x').textContent = origin.x.toFixed(3);
-    document.getElementById('coord-y').textContent = origin.y.toFixed(3);
-    document.getElementById('coord-proj').textContent = zone;
+    situDxf=makeDxf(layers,sPolys,sTxts,sPts,[ox,oy]);
+    situName=`situ5000_${geo.city||'export'}_${zone}_${new Date().toISOString().slice(0,10)}.dxf`;
+    setProgress(95);
+
+    // Show results
+    document.getElementById('coord-x').textContent=ox.toFixed(3);
+    document.getElementById('coord-y').textContent=oy.toFixed(3);
+    document.getElementById('coord-proj').textContent=zone;
     document.getElementById('coords-section').classList.remove('hidden');
-    document.getElementById('stats').innerHTML =
-      `<div class="stat"><div class="stat-val">${allParcelles.length}</div><div class="stat-lbl">Parcelles</div></div>`+
+    document.getElementById('stats').innerHTML=
+      `<div class="stat"><div class="stat-val">${parcelles.length}</div><div class="stat-lbl">Parcelles</div></div>`+
       `<div class="stat"><div class="stat-val">${batiments.length}</div><div class="stat-lbl">Batiments</div></div>`+
       `<div class="stat"><div class="stat-val">${sections.length}</div><div class="stat-lbl">Sections</div></div>`+
-      `<div class="stat"><div class="stat-val">${zone}</div><div class="stat-lbl">Projection</div></div>`+
-      `<div class="stat"><div class="stat-val">${(lastDxfContent.length/1024).toFixed(0)}K</div><div class="stat-lbl">Taille</div></div>`;
-    results.classList.remove('hidden');
-    drawPreview(allParcelles, batiments, geo, zone);
-    showStatus(`Fichier DXF genere — ${allParcelles.length} parcelles, ${batiments.length} batiments\nProjection ${zone} (EPSG:${origin.epsg})\nOrigine : X=${origin.x.toFixed(3)}  Y=${origin.y.toFixed(3)}`, 'success');
-  } catch (e) { showStatus('Erreur : ' + e.message, 'error'); console.error(e); }
-  btn.disabled = false;
+      `<div class="stat"><div class="stat-val">${zone}</div><div class="stat-lbl">Projection</div></div>`;
+    res.classList.remove('hidden');
+    drawPreview(parcelles,batiments,geo,zone);
+    setProgress(100);
+    showStatus(`OK — ${parcelles.length} parcelles, ${batiments.length} batiments\nSituation: ${situParcelles.length} parcelles, ${situBatiments.length} batiments`,'success');
+  } catch(e){showStatus('Erreur: '+e.message,'error');console.error(e)}
+  btn.disabled=false;
 }
 
-// ============================================================
-// PLAN DE SITUATION (situ5000)
-// ============================================================
-async function generateSitu(geo, zone, origin) {
-  try {
-    // Recuperer les feuilles dans un rayon de 500m
-    const situFeuilles = await getFeuillesInRadius(geo.lon, geo.lat, 500);
-    const situSections = [...new Set(situFeuilles.map(f => f.properties.section))];
-    const codeInsee = situFeuilles[0].properties.code_insee;
-
-    let situParcelles = [];
-    for (const sec of situSections) {
-      situParcelles = situParcelles.concat(await getParcelles(codeInsee, sec));
-    }
-
-    // Bbox elargie pour batiments
-    let sMinLon=Infinity,sMinLat=Infinity,sMaxLon=-Infinity,sMaxLat=-Infinity;
-    for (const p of situParcelles) for (const c of flatCoords(p.geometry)) { sMinLon=Math.min(sMinLon,c[0]);sMinLat=Math.min(sMinLat,c[1]);sMaxLon=Math.max(sMaxLon,c[0]);sMaxLat=Math.max(sMaxLat,c[1]); }
-    const ex2=0.002; sMinLon-=ex2;sMinLat-=ex2;sMaxLon+=ex2;sMaxLat+=ex2;
-    const situBatiments = await getBatiments([sMinLon,sMinLat,sMaxLon,sMaxLat]);
-
-    const ox = origin.x, oy = origin.y;
-    const rel = (c) => { const pr = lccProject(c[0],c[1],zone); return [pr.x - ox, pr.y - oy]; };
-
-    const dxf = new DxfWriter();
-    dxf.addLayer('PARCELLES',7); dxf.addLayer('BATIMENTS',1); dxf.addLayer('NUMEROS',3); dxf.addLayer('SECTIONS',5); dxf.addLayer('ORIGINE',6);
-    dxf.setInsBase(ox, oy);
-    dxf.addPoint('ORIGINE', 0, 0);
-    dxf.addText('ORIGINE', 5, -8, 4, `Origine: X=${ox.toFixed(3)} Y=${oy.toFixed(3)} (${zone})`);
-
-    for (const p of situParcelles) {
-      for (const ring of rings(p.geometry)) dxf.addLwPolyline('PARCELLES', ring.map(c => rel(c)), true);
-    }
-    for (const f of situFeuilles) {
-      const ctr=centroid(f.geometry), cp=lccProject(ctr[0],ctr[1],zone);
-      dxf.addText('SECTIONS', cp.x - ox, cp.y - oy, 8, f.properties.section);
-    }
-    for (const b of situBatiments) {
-      for (const ring of rings(b.geometry)) dxf.addLwPolyline('BATIMENTS', ring.map(c => rel(c)), true);
-    }
-
-    lastSituContent = dxf.generate();
-    lastSituFilename = `situ5000_${geo.city||'export'}_${zone}_${new Date().toISOString().slice(0,10)}.dxf`;
-    log(`Plan de situation: ${situParcelles.length} parcelles, ${situBatiments.length} batiments, ${situSections.length} sections`);
-  } catch(e) {
-    log(`Plan de situation: ${e.message}`);
-    lastSituContent = null;
-  }
+// ── DOWNLOADS ────────────────────────────────────────────────
+function downloadDxf(type){
+  const content=type==='situ'?situDxf:cadDxf, name=type==='situ'?situName:cadName;
+  if(!content){showStatus('Generez d\'abord','error');return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'application/dxf'}));a.download=name;a.click();
 }
 
-function downloadSitu() {
-  if(!lastSituContent) { showStatus('Generez d\'abord un cadastre', 'error'); return; }
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([lastSituContent],{type:'application/dxf'})); a.download=lastSituFilename; a.click();
+function copyCoords(w){
+  if(!originCoords)return;
+  const t=w==='x'?originCoords.x.toFixed(3):w==='y'?originCoords.y.toFixed(3):`X=${originCoords.x.toFixed(3)} Y=${originCoords.y.toFixed(3)} (${originCoords.zone})`;
+  navigator.clipboard.writeText(t);
+  const toast=document.getElementById('toast');toast.textContent=t;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2000);
 }
 
-function exportPDF(type) {
-  if(!lastGeo) { showStatus('Generez d\'abord un cadastre', 'error'); return; }
+// ── PDF EXPORT (style cadastre.gouv.fr) ──────────────────────
+function exportPDF(type){
+  if(!S.geo){showStatus('Generez d\'abord','error');return}
+  const isSitu=type==='situ';
+  const parcelles=isSitu?S.situParcelles:S.parcelles;
+  const batiments=isSitu?S.situBatiments:S.batiments;
+  const feuilles=isSitu?S.situFeuilles:S.feuilles;
+  const scale=isSitu?5000:1000;
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const pw=297,ph=210;
 
-  const isSitu = type === 'situ';
-  const parcelles = isSitu && lastSituContent ? lastParcelles : lastParcelles; // Use same data for preview
-  const batiments = lastBatiments;
-  const scale = isSitu ? 5000 : 1000;
-  const margin = 40;
+  // Cadre
+  doc.setDrawColor(0);doc.setLineWidth(0.5);
+  doc.rect(8,8,pw-16,ph-16);
+  doc.setLineWidth(0.3);
+  doc.rect(10,10,pw-20,ph-20);
 
-  // A4 landscape in pixels (300dpi equivalent for screen)
-  const pw = 1122, ph = 794;
-  const canvas = document.createElement('canvas');
-  canvas.width = pw; canvas.height = ph;
-  const ctx = canvas.getContext('2d');
+  // Cartouche haut (style cadastre.gouv.fr)
+  doc.setFillColor(255);doc.rect(10,10,pw-20,22,'F');
+  doc.setDrawColor(0);doc.setLineWidth(0.3);doc.line(10,32,pw-10,32);
 
-  // White background
-  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,pw,ph);
+  doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text(`EXTRAIT ${isSitu?'DU PLAN DE SITUATION':'CADASTRAL'}`,15,19);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text(`Commune : ${S.geo.city || '?'}`,15,25);
+  doc.text(`Section(s) : ${(isSitu?S.situSections:S.sections).join(', ')}`,100,25);
+  doc.text(`Echelle originale : 1/${scale}`,200,25);
+  doc.text(`Adresse : ${S.geo.label}`,15,30);
+  doc.text(`Projection : ${S.zone}  |  Date : ${new Date().toLocaleDateString('fr-FR')}`,200,30);
 
-  // Title block
-  ctx.fillStyle = '#000';
-  ctx.font = 'bold 16px Poppins, sans-serif';
-  ctx.fillText(`Plan ${isSitu ? 'de situation' : 'cadastral'} — ${lastGeo.label}`, margin, 30);
-  ctx.font = '10px JetBrains Mono, monospace';
-  ctx.fillStyle = '#666';
-  ctx.fillText(`Projection ${lastZone} | Echelle indicative 1/${scale} | ${new Date().toLocaleDateString('fr-FR')}`, margin, 48);
-  ctx.fillText(`Origine: X=${originCoords.x.toFixed(3)} Y=${originCoords.y.toFixed(3)}`, margin, 62);
+  // Zone de dessin
+  const mx=14,my=36,mw=pw-28,mh=ph-52;
 
-  // Draw area
-  const dx = margin, dy = 75, dw = pw - margin*2, dh = ph - 75 - margin;
+  // Projeter toutes les geometries
+  const zone=S.zone;
+  let allPts=[];
+  const projRings=(g)=>ringsOf(g).map(ring=>ring.map(c=>{const p=proj(c[0],c[1],zone);allPts.push(p);return p}));
+  const pR=parcelles.flatMap(p=>projRings(p.geometry));
+  const bR=batiments.flatMap(b=>projRings(b.geometry));
+  if(!allPts.length){doc.save('empty.pdf');return}
 
-  // Compute bounds
-  let pts = [];
-  const zone = lastZone;
-  const projRings = (g) => rings(g).map(r => r.map(c => { const p = lccProject(c[0],c[1],zone); pts.push(p); return p; }));
+  let xn=Infinity,yn=Infinity,xx=-Infinity,yx=-Infinity;
+  for(const p of allPts){xn=Math.min(xn,p.x);yn=Math.min(yn,p.y);xx=Math.max(xx,p.x);yx=Math.max(yx,p.y)}
 
-  const pR = lastParcelles.flatMap(p => projRings(p.geometry));
-  const bR = lastBatiments.flatMap(b => projRings(b.geometry));
-  if (!pts.length) return;
-
-  let mx=Infinity,my=Infinity,Mx=-Infinity,My=-Infinity;
-  for(const p of pts){mx=Math.min(mx,p.x);my=Math.min(my,p.y);Mx=Math.max(Mx,p.x);My=Math.max(My,p.y)}
-
-  if (isSitu) { // Expand for situation
-    const cx=(mx+Mx)/2, cy=(my+My)/2, expand=250;
-    mx=cx-expand; Mx=cx+expand; my=cy-expand; My=cy+expand;
-  }
-
-  const sc = Math.min(dw/(Mx-mx||1), dh/(My-my||1));
-  const ox2 = dx + (dw - (Mx-mx)*sc)/2;
-  const oy2 = dy + (dh - (My-my)*sc)/2;
-  const tx = p => ox2 + (p.x-mx)*sc;
-  const ty = p => oy2 + dh - (p.y-my)*sc;
+  // Echelle pour que tout rentre
+  const sc=Math.min(mw/(xx-xn||1),mh/(yx-yn||1));
+  const offx=mx+(mw-(xx-xn)*sc)/2;
+  const offy=my+(mh-(yx-yn)*sc)/2;
+  const tx=p=>offx+(p.x-xn)*sc;
+  const ty=p=>offy+mh-(p.y-yn)*sc;
 
   // Parcelles
-  ctx.strokeStyle = '#888'; ctx.lineWidth = 0.5;
-  for(const r of pR){ctx.beginPath();r.forEach((p,i)=>{i?ctx.lineTo(tx(p),ty(p)):ctx.moveTo(tx(p),ty(p))});ctx.closePath();ctx.stroke()}
+  doc.setDrawColor(120);doc.setLineWidth(0.15);
+  for(const ring of pR){
+    const pts=ring.map(p=>([tx(p),ty(p)]));
+    if(pts.length<2)continue;
+    doc.lines(pts.slice(1).map((p,i)=>[p[0]-pts[i][0],p[1]-pts[i][1]]),pts[0][0],pts[0][1]);
+    // Close
+    const last=pts[pts.length-1],first=pts[0];
+    doc.line(last[0],last[1],first[0],first[1]);
+  }
 
   // Batiments
-  ctx.strokeStyle = '#333'; ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.lineWidth = 1;
-  for(const r of bR){ctx.beginPath();r.forEach((p,i)=>{i?ctx.lineTo(tx(p),ty(p)):ctx.moveTo(tx(p),ty(p))});ctx.closePath();ctx.fill();ctx.stroke()}
+  doc.setDrawColor(40);doc.setFillColor(220);doc.setLineWidth(0.25);
+  for(const ring of bR){
+    const pts=ring.map(p=>([tx(p),ty(p)]));
+    if(pts.length<3)continue;
+    // Fill polygon
+    doc.setFillColor(230);
+    const moves=pts.slice(1).map((p,i)=>[p[0]-pts[i][0],p[1]-pts[i][1]]);
+    doc.lines(moves,pts[0][0],pts[0][1],null,'F');
+    // Stroke
+    doc.setDrawColor(60);doc.setLineWidth(0.2);
+    doc.lines(moves,pts[0][0],pts[0][1]);
+    doc.line(pts[pts.length-1][0],pts[pts.length-1][1],pts[0][0],pts[0][1]);
+  }
 
-  // Origin cross
-  const o = lccProject(lastGeo.lon, lastGeo.lat, zone);
-  const ocx = tx(o), ocy = ty(o);
-  ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(ocx-10,ocy);ctx.lineTo(ocx+10,ocy); ctx.moveTo(ocx,ocy-10);ctx.lineTo(ocx,ocy+10); ctx.stroke();
-  ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(ocx,ocy,3,0,Math.PI*2); ctx.fill();
+  // Croix origine
+  const oc=proj(S.geo.lon,S.geo.lat,zone);
+  const ocx=tx(oc),ocy=ty(oc);
+  doc.setDrawColor(200,0,0);doc.setLineWidth(0.5);
+  doc.line(ocx-3,ocy,ocx+3,ocy);doc.line(ocx,ocy-3,ocx,ocy+3);
 
-  // Scale bar
-  ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
-  ctx.fillStyle = '#000'; ctx.font = '9px JetBrains Mono, monospace';
-  const barLen = isSitu ? 100 : 50; // meters
-  const barPx = barLen * sc;
-  const bx = pw - margin - barPx, by = ph - 20;
-  ctx.beginPath(); ctx.moveTo(bx,by);ctx.lineTo(bx+barPx,by); ctx.moveTo(bx,by-5);ctx.lineTo(bx,by+5); ctx.moveTo(bx+barPx,by-5);ctx.lineTo(bx+barPx,by+5); ctx.stroke();
-  ctx.fillText(`${barLen} m`, bx + barPx/2 - 12, by - 8);
+  // Barre d'echelle
+  const barM=isSitu?200:50;
+  const barMm=barM*sc;
+  const bx=pw-15-barMm,by=ph-14;
+  doc.setDrawColor(0);doc.setLineWidth(0.3);
+  doc.line(bx,by,bx+barMm,by);
+  doc.line(bx,by-1.5,bx,by+1.5);
+  doc.line(bx+barMm,by-1.5,bx+barMm,by+1.5);
+  doc.setFontSize(7);doc.setFont('helvetica','normal');
+  doc.text(`${barM} m`,bx+barMm/2,by-3,{align:'center'});
 
-  // Border
-  ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5;
-  ctx.strokeRect(margin-5, 70, dw+10, dh+10);
+  // Numero parcelles
+  doc.setFontSize(5);doc.setTextColor(100);
+  for(const p of parcelles){
+    if(!p.properties.numero)continue;
+    const c=centroidOf(p.geometry),cp=proj(c[0],c[1],zone);
+    doc.text(p.properties.numero,tx(cp),ty(cp),{align:'center'});
+  }
 
   // Footer
-  ctx.font = '8px Poppins, sans-serif'; ctx.fillStyle = '#999';
-  ctx.fillText('PK Archi — Donnees IGN / BDTOPO / BAN', margin, ph - 5);
+  doc.setFontSize(6);doc.setTextColor(150);
+  doc.text('PK Archi — Donnees cadastrales IGN / BDTOPO / BAN — Document non contractuel',pw/2,ph-9,{align:'center'});
 
-  // Download as PDF (via image)
-  const link = document.createElement('a');
-  link.download = `${isSitu?'situ5000':'cad1000'}_${lastGeo.city||'export'}_${new Date().toISOString().slice(0,10)}.png`;
-  link.href = canvas.toDataURL('image/png');
-  link.click();
+  // Coordonnees origine
+  doc.setFontSize(6);doc.setTextColor(100);
+  doc.text(`Origine: X=${S.o.x.toFixed(3)} Y=${S.o.y.toFixed(3)} (${S.zone})`,15,ph-9);
+
+  doc.save(`${isSitu?'situ5000':'cad1000'}_${S.geo.city||'export'}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
-// ============================================================
-// HELPERS
-// ============================================================
-function flatCoords(g) { const r=[]; (function w(a){if(typeof a[0]==='number'){r.push(a);return}for(const x of a)w(x)})(g.coordinates); return r; }
-function rings(g) { const r=[]; if(g.type==='Polygon')for(const x of g.coordinates)r.push(x);else if(g.type==='MultiPolygon')for(const p of g.coordinates)for(const x of p)r.push(x); return r; }
-function centroid(g) { const p=flatCoords(g);let x=0,y=0;for(const c of p){x+=c[0];y+=c[1]}return[x/p.length,y/p.length]; }
-function showStatus(m,t) { const el=document.getElementById('status');el.textContent=m;el.className=`log ${t}`;el.classList.remove('hidden'); }
-function log(m) { const el=document.getElementById('status');el.textContent=(el.textContent?el.textContent+'\n':'')+m; }
-function setProgress(p) { document.getElementById('progress').style.width=p+'%'; }
-
-function downloadDxf() {
-  if(!lastDxfContent)return;
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([lastDxfContent],{type:'application/dxf'})); a.download=lastFilename; a.click();
-}
-
-function copyCoords(w) {
-  if(!originCoords)return;
-  const t = w==='x'?originCoords.x.toFixed(3):w==='y'?originCoords.y.toFixed(3):`X=${originCoords.x.toFixed(3)} Y=${originCoords.y.toFixed(3)} (${originCoords.zone})`;
-  navigator.clipboard.writeText(t);
-  const toast=document.getElementById('toast'); toast.textContent=t; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),2000);
-}
-
-function drawPreview(parcelles, batiments, geo, zone) {
-  const canvas=document.getElementById('map-preview'); canvas.classList.remove('hidden');
+// ── PREVIEW ──────────────────────────────────────────────────
+function drawPreview(parcelles,batiments,geo,zone){
+  const canvas=document.getElementById('map-preview');canvas.classList.remove('hidden');
   const ctx=canvas.getContext('2d');
-  const W=canvas.width=canvas.offsetWidth*2, H=canvas.height=canvas.offsetHeight*2;
-  ctx.scale(2,2); const w=W/2,h=H/2;
-  ctx.fillStyle='#f8f8f8'; ctx.fillRect(0,0,w,h);
+  const W=canvas.width=canvas.offsetWidth*2,H=canvas.height=canvas.offsetHeight*2;
+  ctx.scale(2,2);const w=W/2,h=H/2;
+  ctx.fillStyle='#f8f8f8';ctx.fillRect(0,0,w,h);
 
   let pts=[];
-  const proj=(g)=>rings(g).map(r=>r.map(c=>{const p=lccProject(c[0],c[1],zone);pts.push(p);return p}));
-  const pR=parcelles.flatMap(p=>proj(p.geometry)), bR=batiments.flatMap(b=>proj(b.geometry));
+  const pr=(g)=>ringsOf(g).map(r=>r.map(c=>{const p=proj(c[0],c[1],zone);pts.push(p);return p}));
+  const pR=parcelles.flatMap(p=>pr(p.geometry)),bR=batiments.flatMap(b=>pr(b.geometry));
   if(!pts.length)return;
 
   let mx=Infinity,my=Infinity,Mx=-Infinity,My=-Infinity;
   for(const p of pts){mx=Math.min(mx,p.x);my=Math.min(my,p.y);Mx=Math.max(Mx,p.x);My=Math.max(My,p.y)}
-  const pad=20, sc=Math.min((w-pad*2)/(Mx-mx||1),(h-pad*2)/(My-my||1));
-  const tx=p=>pad+(p.x-mx)*sc, ty=p=>h-pad-(p.y-my)*sc;
+  const pad=20,sc=Math.min((w-pad*2)/(Mx-mx||1),(h-pad*2)/(My-my||1));
+  const tx=p=>pad+(p.x-mx)*sc,ty=p=>h-pad-(p.y-my)*sc;
 
-  ctx.strokeStyle='#c8c8c8'; ctx.lineWidth=0.5;
-  for(const r of pR){ctx.beginPath();r.forEach((p,i)=>{const x=tx(p),y=ty(p);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.closePath();ctx.stroke()}
+  ctx.strokeStyle='#c8c8c8';ctx.lineWidth=0.5;
+  for(const r of pR){ctx.beginPath();r.forEach((p,i)=>{i?ctx.lineTo(tx(p),ty(p)):ctx.moveTo(tx(p),ty(p))});ctx.closePath();ctx.stroke()}
+  ctx.strokeStyle='#c0392b';ctx.fillStyle='rgba(192,57,43,0.08)';ctx.lineWidth=1;
+  for(const r of bR){ctx.beginPath();r.forEach((p,i)=>{i?ctx.lineTo(tx(p),ty(p)):ctx.moveTo(tx(p),ty(p))});ctx.closePath();ctx.fill();ctx.stroke()}
 
-  ctx.strokeStyle='#c0392b'; ctx.fillStyle='rgba(192,57,43,0.08)'; ctx.lineWidth=1;
-  for(const r of bR){ctx.beginPath();r.forEach((p,i)=>{const x=tx(p),y=ty(p);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.closePath();ctx.fill();ctx.stroke()}
-
-  const o=lccProject(geo.lon,geo.lat,zone), ox=tx(o), oy=ty(o);
-  ctx.fillStyle='#32373c'; ctx.beginPath(); ctx.arc(ox,oy,4,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle='#32373c'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(ox-8,oy);ctx.lineTo(ox+8,oy); ctx.moveTo(ox,oy-8);ctx.lineTo(ox,oy+8); ctx.stroke();
+  const o=proj(geo.lon,geo.lat,zone);
+  ctx.fillStyle='#32373c';ctx.beginPath();ctx.arc(tx(o),ty(o),4,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#32373c';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(tx(o)-8,ty(o));ctx.lineTo(tx(o)+8,ty(o));ctx.moveTo(tx(o),ty(o)-8);ctx.lineTo(tx(o),ty(o)+8);ctx.stroke();
 }
 
 document.getElementById('address').addEventListener('keydown',e=>{if(e.key==='Enter')generate()});
