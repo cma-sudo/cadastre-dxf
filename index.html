@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadastre DXF Generator — Revit</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0f;--card:#141419;--border:#1e1e26;--text:#e8e8ed;--muted:#6e6e7a;--accent:#ff8c42;--blue:#4a9eff;--green:#34c759;--red:#ff3b30;--font-mono:'JetBrains Mono',monospace;--font-sans:'Syne',sans-serif}
+body{font-family:var(--font-sans);background:var(--bg);color:var(--text);min-height:100vh;padding:24px}
+h1{font-size:28px;font-weight:800;letter-spacing:-1px;margin-bottom:4px}
+h2{font-size:14px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.container{max-width:900px;margin:0 auto}
+.header{margin-bottom:32px;display:flex;align-items:baseline;justify-content:space-between}
+.header .badge{font-family:var(--font-mono);font-size:10px;padding:4px 10px;border-radius:20px;background:rgba(255,140,66,.12);color:var(--accent);border:1px solid rgba(255,140,66,.25)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px}
+.card-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card-title::before{content:'';width:3px;height:12px;border-radius:2px;background:var(--accent)}
+.row{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.field{flex:1;min-width:200px}
+.field label{display:block;font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+input,select{width:100%;padding:10px 14px;background:#0e0e14;border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none;transition:border .2s}
+input:focus,select:focus{border-color:var(--accent)}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236e6e7a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+button{padding:12px 24px;border:none;border-radius:10px;font-family:var(--font-sans);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--accent);color:#000}
+.btn-primary:hover{background:#ffa066;transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-secondary{background:rgba(74,158,255,.12);color:var(--blue);border:1px solid rgba(74,158,255,.25)}
+.btn-secondary:hover{background:rgba(74,158,255,.2)}
+.btn-small{padding:6px 12px;font-size:11px;border-radius:8px}
+.status{font-family:var(--font-mono);font-size:11px;padding:12px 16px;border-radius:10px;margin-top:12px;white-space:pre-wrap;max-height:200px;overflow-y:auto;line-height:1.6}
+.status.info{background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.15);color:var(--blue)}
+.status.error{background:rgba(255,59,48,.08);border:1px solid rgba(255,59,48,.15);color:var(--red)}
+.status.success{background:rgba(52,199,89,.08);border:1px solid rgba(52,199,89,.15);color:var(--green)}
+.coords-box{display:flex;gap:8px;align-items:center;padding:10px 14px;background:#0e0e14;border:1px solid var(--border);border-radius:10px;font-family:var(--font-mono);font-size:12px;color:var(--accent);cursor:pointer;transition:border .2s}
+.coords-box:hover{border-color:var(--accent)}
+.coords-box .label{color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-right:8px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:12px}
+.stat{padding:10px;border-radius:10px;background:#0e0e14;border:1px solid var(--border);text-align:center}
+.stat-value{font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--accent)}
+.stat-label{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.progress{height:3px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.progress-bar{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;width:0}
+#map-preview{width:100%;height:300px;border-radius:10px;background:#0e0e14;border:1px solid var(--border);margin-top:12px}
+.hidden{display:none}
+.copy-toast{position:fixed;bottom:24px;right:24px;padding:10px 16px;background:var(--green);color:#000;font-family:var(--font-mono);font-size:11px;font-weight:700;border-radius:8px;opacity:0;transition:opacity .3s;z-index:100}
+.copy-toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>Cadastre DXF</h1>
+      <h2>Generateur pour Autodesk Revit</h2>
+    </div>
+    <span class="badge">v2.0</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Recherche</div>
+    <div class="row">
+      <div class="field" style="flex:3">
+        <label>Adresse</label>
+        <input type="text" id="address" placeholder="12 rue de la Paix, Paris" autocomplete="off">
+      </div>
+      <div class="field" style="flex:1;min-width:120px">
+        <label>Rayon (m)</label>
+        <input type="number" id="radius" value="0" min="0" max="2000" step="50" title="0 = section unique, >0 = multi-sections">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Projection</label>
+        <select id="projection">
+          <option value="auto">Auto (selon latitude)</option>
+          <option value="CC42">CC42 — Corse / Midi</option>
+          <option value="CC43">CC43 — Languedoc</option>
+          <option value="CC44">CC44 — Aquitaine</option>
+          <option value="CC45">CC45 — Centre-Sud</option>
+          <option value="CC46">CC46 — Centre</option>
+          <option value="CC47">CC47 — Centre-Nord</option>
+          <option value="CC48">CC48 — Alsace / Nord-Est</option>
+          <option value="CC49">CC49 — Ile-de-France / Nord</option>
+          <option value="CC50">CC50 — Nord / Flandres</option>
+        </select>
+      </div>
+      <div class="field" style="flex:0;min-width:auto;display:flex;align-items:flex-end">
+        <button class="btn-primary" id="btn-generate" onclick="generate()">Generer DXF</button>
+      </div>
+    </div>
+    <div class="progress"><div class="progress-bar" id="progress"></div></div>
+    <div id="status" class="status info hidden"></div>
+  </div>
+
+  <div id="results" class="card hidden">
+    <div class="card-title">Resultats</div>
+    <div id="coords-section" class="hidden">
+      <div class="row">
+        <div class="coords-box" onclick="copyCoords('x')" title="Cliquer pour copier">
+          <span class="label">X</span>
+          <span id="coord-x">—</span>
+        </div>
+        <div class="coords-box" onclick="copyCoords('y')" title="Cliquer pour copier">
+          <span class="label">Y</span>
+          <span id="coord-y">—</span>
+        </div>
+        <div class="coords-box" onclick="copyCoords('both')" title="Cliquer pour copier X,Y">
+          <span class="label">Origine</span>
+          <span id="coord-proj">—</span>
+        </div>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="btn-primary" id="btn-download" onclick="downloadDxf()">Telecharger DXF</button>
+      <button class="btn-secondary btn-small" onclick="copyCoords('both')">Copier coordonnees</button>
+    </div>
+  </div>
+
+  <canvas id="map-preview" class="hidden"></canvas>
+</div>
+
+<div class="copy-toast" id="toast">Copie dans le presse-papier</div>
+
+<script>
+// ============================================================
+// PROJECTIONS CC42-CC50 (Lambert Conique Conforme)
+// ============================================================
+const CC_ZONES = {
+  CC42:{lat0:42,Y0:1200000,epsg:3942}, CC43:{lat0:43,Y0:2200000,epsg:3943},
+  CC44:{lat0:44,Y0:3200000,epsg:3944}, CC45:{lat0:45,Y0:4200000,epsg:3945},
+  CC46:{lat0:46,Y0:5200000,epsg:3946}, CC47:{lat0:47,Y0:6200000,epsg:3947},
+  CC48:{lat0:48,Y0:7200000,epsg:3948}, CC49:{lat0:49,Y0:8200000,epsg:3949},
+  CC50:{lat0:50,Y0:9200000,epsg:3950},
+};
+
+const GRS80 = {a:6378137, f:1/298.257222101};
+GRS80.e2 = 2*GRS80.f - GRS80.f*GRS80.f;
+GRS80.e = Math.sqrt(GRS80.e2);
+
+function getZoneForLat(lat) {
+  if (lat < 41.25) return 'CC42';
+  for (let z = 42; z <= 50; z++) {
+    if (lat >= z - 0.75 && lat <= z + 0.75) return 'CC' + z;
+  }
+  return 'CC50';
+}
+
+function deg2rad(d) { return d * Math.PI / 180; }
+
+function lccProject(lon, lat, zone) {
+  const z = CC_ZONES[zone];
+  const {a, e, e2} = GRS80;
+  const lon0 = deg2rad(3); // Central meridian 3deg E
+  const lat0 = deg2rad(z.lat0);
+  const lat1 = deg2rad(z.lat0 - 0.75);
+  const lat2 = deg2rad(z.lat0 + 0.75);
+  const X0 = 1700000;
+  const Y0 = z.Y0;
+
+  const sinLat = (phi) => Math.sin(phi);
+  const L = (phi) => {
+    const sp = e * sinLat(phi);
+    return Math.log(Math.tan(Math.PI/4 + phi/2) * Math.pow((1-sp)/(1+sp), e/2));
+  };
+  const gN = (phi) => a / Math.sqrt(1 - e2 * sinLat(phi) * sinLat(phi));
+
+  const L1 = L(lat1), L2 = L(lat2), L0 = L(lat0);
+  const N1 = gN(lat1) * Math.cos(lat1);
+  const N2 = gN(lat2) * Math.cos(lat2);
+
+  const n = (Math.log(N2) - Math.log(N1)) / (L1 - L2);
+  const C = N1 / n * Math.exp(n * L1);
+  const rho0 = C * Math.exp(-n * L0);
+
+  const latR = deg2rad(lat);
+  const lonR = deg2rad(lon);
+  const rho = C * Math.exp(-n * L(latR));
+  const theta = n * (lonR - lon0);
+
+  const x = X0 + rho * Math.sin(theta);
+  const y = Y0 + rho0 - rho * Math.cos(theta);
+
+  return {x, y, zone, epsg: z.epsg};
+}
+
+// ============================================================
+// DXF GENERATOR
+// ============================================================
+class DxfWriter {
+  constructor() {
+    this.handle = 100;
+    this.lines = [];
+    this.entities = [];
+    this.layers = new Map();
+  }
+
+  nextHandle() {
+    return (this.handle++).toString(16).toUpperCase();
+  }
+
+  addLayer(name, color) {
+    this.layers.set(name, color);
+  }
+
+  addLwPolyline(layer, points, closed = true) {
+    const h = this.nextHandle();
+    let ent = '';
+    ent += this.g(0, 'LWPOLYLINE');
+    ent += this.g(5, h);
+    ent += this.g(100, 'AcDbEntity');
+    ent += this.g(8, layer);
+    ent += this.g(100, 'AcDbPolyline');
+    ent += this.g(90, points.length);
+    ent += this.g(70, closed ? 1 : 0);
+    for (const p of points) {
+      ent += this.g(10, p[0].toFixed(4));
+      ent += this.g(20, p[1].toFixed(4));
+    }
+    this.entities.push(ent);
+  }
+
+  addText(layer, x, y, height, text, rotation = 0) {
+    const h = this.nextHandle();
+    let ent = '';
+    ent += this.g(0, 'TEXT');
+    ent += this.g(5, h);
+    ent += this.g(100, 'AcDbEntity');
+    ent += this.g(8, layer);
+    ent += this.g(100, 'AcDbText');
+    ent += this.g(10, x.toFixed(4));
+    ent += this.g(20, y.toFixed(4));
+    ent += this.g(40, height.toFixed(2));
+    ent += this.g(1, text);
+    ent += this.g(50, rotation.toFixed(1));
+    ent += this.g(100, 'AcDbText');
+    this.entities.push(ent);
+  }
+
+  addPoint(layer, x, y) {
+    const h = this.nextHandle();
+    let ent = '';
+    ent += this.g(0, 'POINT');
+    ent += this.g(5, h);
+    ent += this.g(100, 'AcDbEntity');
+    ent += this.g(8, layer);
+    ent += this.g(100, 'AcDbPoint');
+    ent += this.g(10, x.toFixed(4));
+    ent += this.g(20, y.toFixed(4));
+    this.entities.push(ent);
+  }
+
+  g(code, value) {
+    return `  ${code}\r\n${value}\r\n`;
+  }
+
+  generate() {
+    let dxf = '';
+
+    // HEADER
+    dxf += this.g(0, 'SECTION');
+    dxf += this.g(2, 'HEADER');
+    dxf += this.g(9, '$ACADVER');
+    dxf += this.g(1, 'AC1027');
+    dxf += this.g(9, '$INSUNITS');
+    dxf += this.g(70, 6); // meters
+    dxf += this.g(0, 'ENDSEC');
+
+    // TABLES
+    dxf += this.g(0, 'SECTION');
+    dxf += this.g(2, 'TABLES');
+
+    // VPORT table
+    dxf += this.g(0, 'TABLE');
+    dxf += this.g(2, 'VPORT');
+    dxf += this.g(5, this.nextHandle());
+    dxf += this.g(70, 0);
+    dxf += this.g(0, 'ENDTAB');
+
+    // LTYPE table
+    dxf += this.g(0, 'TABLE');
+    dxf += this.g(2, 'LTYPE');
+    dxf += this.g(5, this.nextHandle());
+    dxf += this.g(70, 1);
+    dxf += this.g(0, 'LTYPE');
+    dxf += this.g(5, this.nextHandle());
+    dxf += this.g(2, 'Continuous');
+    dxf += this.g(70, 0);
+    dxf += this.g(3, 'Solid line');
+    dxf += this.g(72, 65);
+    dxf += this.g(73, 0);
+    dxf += this.g(40, '0.0');
+    dxf += this.g(0, 'ENDTAB');
+
+    // LAYER table
+    dxf += this.g(0, 'TABLE');
+    dxf += this.g(2, 'LAYER');
+    dxf += this.g(5, this.nextHandle());
+    dxf += this.g(70, this.layers.size);
+    for (const [name, color] of this.layers) {
+      dxf += this.g(0, 'LAYER');
+      dxf += this.g(5, this.nextHandle());
+      dxf += this.g(100, 'AcDbSymbolTableRecord');
+      dxf += this.g(100, 'AcDbLayerTableRecord');
+      dxf += this.g(2, name);
+      dxf += this.g(70, 0);
+      dxf += this.g(62, color);
+      dxf += this.g(6, 'Continuous');
+    }
+    dxf += this.g(0, 'ENDTAB');
+
+    // STYLE table
+    dxf += this.g(0, 'TABLE');
+    dxf += this.g(2, 'STYLE');
+    dxf += this.g(5, this.nextHandle());
+    dxf += this.g(70, 0);
+    dxf += this.g(0, 'ENDTAB');
+
+    dxf += this.g(0, 'ENDSEC');
+
+    // BLOCKS
+    dxf += this.g(0, 'SECTION');
+    dxf += this.g(2, 'BLOCKS');
+    dxf += this.g(0, 'ENDSEC');
+
+    // ENTITIES
+    dxf += this.g(0, 'SECTION');
+    dxf += this.g(2, 'ENTITIES');
+    for (const ent of this.entities) {
+      dxf += ent;
+    }
+    dxf += this.g(0, 'ENDSEC');
+
+    // EOF
+    dxf += this.g(0, 'EOF');
+
+    return dxf;
+  }
+}
+
+// ============================================================
+// API CALLS
+// ============================================================
+async function geocode(address) {
+  const url = `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(address)}&limit=1`;
+  const r = await fetch(url);
+  const d = await r.json();
+  if (!d.features || !d.features.length) throw new Error('Adresse non trouvee');
+  const f = d.features[0];
+  return {
+    lon: f.geometry.coordinates[0],
+    lat: f.geometry.coordinates[1],
+    label: f.properties.label,
+    city: f.properties.city,
+    postcode: f.properties.postcode,
+  };
+}
+
+async function getFeuilles(lon, lat) {
+  const url = `https://apicarto.ign.fr/api/cadastre/feuille?geom=${JSON.stringify({type:'Point',coordinates:[lon,lat]})}`;
+  const r = await fetch(url);
+  const d = await r.json();
+  if (!d.features || !d.features.length) throw new Error('Aucune feuille cadastrale trouvee');
+  return d.features;
+}
+
+async function getFeuillesInRadius(lon, lat, radius) {
+  if (radius <= 0) return getFeuilles(lon, lat);
+  // Create a bounding box polygon
+  const dlat = radius / 111320;
+  const dlon = radius / (111320 * Math.cos(deg2rad(lat)));
+  const bbox = {
+    type: 'Polygon',
+    coordinates: [[
+      [lon - dlon, lat - dlat],
+      [lon + dlon, lat - dlat],
+      [lon + dlon, lat + dlat],
+      [lon - dlon, lat + dlat],
+      [lon - dlon, lat - dlat],
+    ]]
+  };
+  const url = `https://apicarto.ign.fr/api/cadastre/feuille?geom=${JSON.stringify(bbox)}`;
+  const r = await fetch(url);
+  const d = await r.json();
+  if (!d.features || !d.features.length) throw new Error('Aucune feuille dans le rayon');
+  return d.features;
+}
+
+async function getParcelles(codeInsee, section, numero) {
+  let url = `https://apicarto.ign.fr/api/cadastre/parcelle?code_insee=${codeInsee}&section=${section}`;
+  if (numero) url += `&numero=${numero}`;
+  const r = await fetch(url);
+  const d = await r.json();
+  return d.features || [];
+}
+
+async function getBatiments(bbox) {
+  const [xmin, ymin, xmax, ymax] = bbox;
+  const url = `https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typenames=BDTOPO_V3:batiment&outputFormat=application/json&bbox=${ymin},${xmin},${ymax},${xmax},EPSG:4326&count=500`;
+  const r = await fetch(url);
+  const d = await r.json();
+  return d.features || [];
+}
+
+// ============================================================
+// MAIN GENERATION
+// ============================================================
+let lastDxfContent = null;
+let lastFilename = '';
+let originCoords = null;
+
+async function generate() {
+  const btn = document.getElementById('btn-generate');
+  const status = document.getElementById('status');
+  const progress = document.getElementById('progress');
+  const results = document.getElementById('results');
+  const address = document.getElementById('address').value.trim();
+  const radiusVal = parseInt(document.getElementById('radius').value) || 0;
+  const projChoice = document.getElementById('projection').value;
+
+  if (!address) { showStatus('Entrez une adresse', 'error'); return; }
+
+  btn.disabled = true;
+  results.classList.add('hidden');
+  document.getElementById('map-preview').classList.add('hidden');
+  showStatus('Geocodage en cours...', 'info');
+  setProgress(10);
+
+  try {
+    // 1. Geocode
+    const geo = await geocode(address);
+    log(`Adresse: ${geo.label}\nCoordonnees: ${geo.lat.toFixed(6)}, ${geo.lon.toFixed(6)}`);
+    setProgress(20);
+
+    // 2. Select projection
+    const zone = projChoice === 'auto' ? getZoneForLat(geo.lat) : projChoice;
+    const origin = lccProject(geo.lon, geo.lat, zone);
+    originCoords = origin;
+    log(`Projection: ${zone} (EPSG:${origin.epsg})\nOrigine X: ${origin.x.toFixed(3)} Y: ${origin.y.toFixed(3)}`);
+    setProgress(30);
+
+    // 3. Get feuilles
+    log('Recherche des feuilles cadastrales...');
+    const feuilles = await getFeuillesInRadius(geo.lon, geo.lat, radiusVal);
+    const sections = [...new Set(feuilles.map(f => f.properties.section))];
+    const codeInsee = feuilles[0].properties.code_insee;
+    log(`${feuilles.length} feuille(s) trouvee(s), ${sections.length} section(s): ${sections.join(', ')}`);
+    setProgress(40);
+
+    // 4. Get parcelles from all sections
+    log('Recuperation des parcelles...');
+    let allParcelles = [];
+    for (let i = 0; i < sections.length; i++) {
+      const parcelles = await getParcelles(codeInsee, sections[i]);
+      allParcelles = allParcelles.concat(parcelles);
+      setProgress(40 + (i + 1) / sections.length * 20);
+    }
+    log(`${allParcelles.length} parcelles recuperees`);
+    setProgress(60);
+
+    // 5. Compute bbox for buildings
+    let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
+    for (const p of allParcelles) {
+      const coords = flattenCoords(p.geometry);
+      for (const c of coords) {
+        minLon = Math.min(minLon, c[0]);
+        minLat = Math.min(minLat, c[1]);
+        maxLon = Math.max(maxLon, c[0]);
+        maxLat = Math.max(maxLat, c[1]);
+      }
+    }
+    // Expand bbox by 50m
+    const expand = 0.0005;
+    minLon -= expand; minLat -= expand; maxLon += expand; maxLat += expand;
+
+    // 6. Get buildings
+    log('Recuperation des batiments BDTOPO...');
+    const batiments = await getBatiments([minLon, minLat, maxLon, maxLat]);
+    log(`${batiments.length} batiments recuperes`);
+    setProgress(80);
+
+    // 7. Generate DXF
+    log('Generation du fichier DXF...');
+    const dxf = new DxfWriter();
+    dxf.addLayer('PARCELLES', 7);    // white
+    dxf.addLayer('BATIMENTS', 1);     // red
+    dxf.addLayer('NUMEROS', 3);       // green
+    dxf.addLayer('SECTIONS', 5);      // blue
+    dxf.addLayer('ORIGINE', 6);       // magenta
+
+    // Origin point
+    dxf.addPoint('ORIGINE', origin.x, origin.y);
+
+    // Parcelles
+    for (const p of allParcelles) {
+      const rings = extractRings(p.geometry);
+      for (const ring of rings) {
+        const projected = ring.map(c => {
+          const pr = lccProject(c[0], c[1], zone);
+          return [pr.x, pr.y];
+        });
+        dxf.addLwPolyline('PARCELLES', projected, true);
+      }
+      // Label
+      const center = centroid(p.geometry);
+      const cp = lccProject(center[0], center[1], zone);
+      const num = p.properties.numero || '';
+      if (num) {
+        dxf.addText('NUMEROS', cp.x, cp.y, 1.5, num);
+      }
+    }
+
+    // Section labels
+    for (const f of feuilles) {
+      const center = centroid(f.geometry);
+      const cp = lccProject(center[0], center[1], zone);
+      dxf.addText('SECTIONS', cp.x, cp.y, 3, f.properties.section);
+    }
+
+    // Batiments
+    for (const b of batiments) {
+      const rings = extractRings(b.geometry);
+      for (const ring of rings) {
+        const projected = ring.map(c => {
+          const pr = lccProject(c[0], c[1], zone);
+          return [pr.x, pr.y];
+        });
+        dxf.addLwPolyline('BATIMENTS', projected, true);
+      }
+    }
+
+    lastDxfContent = dxf.generate();
+    lastFilename = `cadastre_${geo.city || 'export'}_${zone}_${new Date().toISOString().slice(0,10)}.dxf`;
+    setProgress(100);
+
+    // Show results
+    document.getElementById('coord-x').textContent = origin.x.toFixed(3);
+    document.getElementById('coord-y').textContent = origin.y.toFixed(3);
+    document.getElementById('coord-proj').textContent = zone;
+    document.getElementById('coords-section').classList.remove('hidden');
+    document.getElementById('stats').innerHTML = `
+      <div class="stat"><div class="stat-value">${allParcelles.length}</div><div class="stat-label">Parcelles</div></div>
+      <div class="stat"><div class="stat-value">${batiments.length}</div><div class="stat-label">Batiments</div></div>
+      <div class="stat"><div class="stat-value">${sections.length}</div><div class="stat-label">Sections</div></div>
+      <div class="stat"><div class="stat-value">${zone}</div><div class="stat-label">Projection</div></div>
+      <div class="stat"><div class="stat-value">${(lastDxfContent.length/1024).toFixed(0)}K</div><div class="stat-label">Taille DXF</div></div>
+    `;
+    results.classList.remove('hidden');
+
+    // Preview
+    drawPreview(allParcelles, batiments, geo, zone);
+
+    showStatus(`DXF genere avec succes!\n${allParcelles.length} parcelles, ${batiments.length} batiments\nProjection ${zone} (EPSG:${origin.epsg})\nOrigine: X=${origin.x.toFixed(3)} Y=${origin.y.toFixed(3)}`, 'success');
+
+  } catch (e) {
+    showStatus('Erreur: ' + e.message, 'error');
+    console.error(e);
+  }
+
+  btn.disabled = false;
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function flattenCoords(geom) {
+  const coords = [];
+  function walk(arr) {
+    if (typeof arr[0] === 'number') { coords.push(arr); return; }
+    for (const a of arr) walk(a);
+  }
+  walk(geom.coordinates);
+  return coords;
+}
+
+function extractRings(geom) {
+  const rings = [];
+  if (geom.type === 'Polygon') {
+    for (const ring of geom.coordinates) rings.push(ring);
+  } else if (geom.type === 'MultiPolygon') {
+    for (const poly of geom.coordinates) {
+      for (const ring of poly) rings.push(ring);
+    }
+  }
+  return rings;
+}
+
+function centroid(geom) {
+  const pts = flattenCoords(geom);
+  let sx = 0, sy = 0;
+  for (const p of pts) { sx += p[0]; sy += p[1]; }
+  return [sx / pts.length, sy / pts.length];
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = `status ${type}`;
+  el.classList.remove('hidden');
+}
+
+function log(msg) {
+  const el = document.getElementById('status');
+  el.textContent = (el.textContent ? el.textContent + '\n' : '') + msg;
+}
+
+function setProgress(pct) {
+  document.getElementById('progress').style.width = pct + '%';
+}
+
+function downloadDxf() {
+  if (!lastDxfContent) return;
+  const blob = new Blob([lastDxfContent], {type: 'application/dxf'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = lastFilename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function copyCoords(which) {
+  if (!originCoords) return;
+  let text;
+  if (which === 'x') text = originCoords.x.toFixed(3);
+  else if (which === 'y') text = originCoords.y.toFixed(3);
+  else text = `X=${originCoords.x.toFixed(3)} Y=${originCoords.y.toFixed(3)} (${originCoords.zone})`;
+  navigator.clipboard.writeText(text);
+  const toast = document.getElementById('toast');
+  toast.textContent = `Copie: ${text}`;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+function drawPreview(parcelles, batiments, geo, zone) {
+  const canvas = document.getElementById('map-preview');
+  canvas.classList.remove('hidden');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width = canvas.offsetWidth * 2;
+  const H = canvas.height = canvas.offsetHeight * 2;
+  ctx.scale(2, 2);
+  const w = W / 2, h = H / 2;
+
+  ctx.fillStyle = '#0e0e14';
+  ctx.fillRect(0, 0, w, h);
+
+  // Collect all projected points for bounds
+  let allPts = [];
+  const projectAll = (geom) => {
+    const rings = extractRings(geom);
+    return rings.map(ring => ring.map(c => {
+      const p = lccProject(c[0], c[1], zone);
+      allPts.push(p);
+      return p;
+    }));
+  };
+
+  const parcRings = parcelles.flatMap(p => projectAll(p.geometry));
+  const batRings = batiments.flatMap(b => projectAll(b.geometry));
+
+  if (allPts.length === 0) return;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of allPts) {
+    minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+  }
+
+  const pad = 20;
+  const scaleX = (w - pad * 2) / (maxX - minX || 1);
+  const scaleY = (h - pad * 2) / (maxY - minY || 1);
+  const scale = Math.min(scaleX, scaleY);
+
+  const tx = (pt) => pad + (pt.x - minX) * scale;
+  const ty = (pt) => h - pad - (pt.y - minY) * scale;
+
+  // Draw parcelles
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 0.5;
+  for (const ring of parcRings) {
+    ctx.beginPath();
+    for (let i = 0; i < ring.length; i++) {
+      const x = tx(ring[i]), y = ty(ring[i]);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  // Draw batiments
+  ctx.strokeStyle = 'rgba(255,59,48,0.6)';
+  ctx.fillStyle = 'rgba(255,59,48,0.15)';
+  ctx.lineWidth = 1;
+  for (const ring of batRings) {
+    ctx.beginPath();
+    for (let i = 0; i < ring.length; i++) {
+      const x = tx(ring[i]), y = ty(ring[i]);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // Origin point
+  const o = lccProject(geo.lon, geo.lat, zone);
+  const ox = tx(o), oy = ty(o);
+  ctx.fillStyle = '#ff8c42';
+  ctx.beginPath();
+  ctx.arc(ox, oy, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ff8c42';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(ox - 8, oy); ctx.lineTo(ox + 8, oy);
+  ctx.moveTo(ox, oy - 8); ctx.lineTo(ox, oy + 8);
+  ctx.stroke();
+}
+
+// Enter key
+document.getElementById('address').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') generate();
+});
+</script>
+</body>
+</html>
