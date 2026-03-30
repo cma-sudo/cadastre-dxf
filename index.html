@@ -399,7 +399,7 @@ async function getParcelles(codeInsee, section, numero) {
 
 async function getBatiments(bbox) {
   const [xmin, ymin, xmax, ymax] = bbox;
-  const url = `https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typenames=BDTOPO_V3:batiment&outputFormat=application/json&bbox=${ymin},${xmin},${ymax},${xmax},EPSG:4326&count=500`;
+  const url = `https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typenames=BDTOPO_V3:batiment&outputFormat=application/json&bbox=${xmin},${ymin},${xmax},${ymax},EPSG:4326&count=500`;
   const r = await fetch(url);
   const d = await r.json();
   return d.features || [];
