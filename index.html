@@ -70,7 +70,7 @@ button{padding:10px 24px;border:none;border-radius:6px;font-family:var(--font);f
       <h1>Cadastre DXF</h1>
       <p>Generateur de fichiers DXF cadastraux pour Autodesk Revit</p>
     </div>
-    <span class="version">v3.1</span>
+    <span class="version">v3.2</span>
   </div>
 
   <div class="section">
@@ -82,7 +82,7 @@ button{padding:10px 24px;border:none;border-radius:6px;font-family:var(--font);f
       </div>
       <div class="field" style="flex:1;min-width:110px">
         <label>Rayon (m)</label>
-        <input type="number" id="radius" value="0" min="0" max="2000" step="50">
+        <input type="number" id="radius" value="300" min="0" max="2000" step="50">
       </div>
     </div>
     <div class="row">
@@ -161,11 +161,11 @@ function proj(lon,lat,zone){
   return{x:1700000+rho*Math.sin(theta),y:z.y+rho0-rho*Math.cos(theta)};
 }
 
-// ── DXF R12 (compatibilite maximale) ─────────────────────────
+// ── DXF R14 LWPOLYLINE (compact + compatible) ───────────────
 function makeDxf(layers, polylines, texts, points, insBase) {
-  let h = 1;
+  let h = 256;
   const nh = () => (h++).toString(16).toUpperCase();
-  const g = (c,v) => `  ${c}\n${v}\n`;
+  const g = (c,v) => `${c}\n${v}\n`;
   let d = '';
 
   // Compute extents
@@ -173,9 +173,9 @@ function makeDxf(layers, polylines, texts, points, insBase) {
   for(const p of polylines) for(const v of p.pts){xn=Math.min(xn,v[0]);yn=Math.min(yn,v[1]);xx=Math.max(xx,v[0]);yx=Math.max(yx,v[1]);}
   if(xn>1e8){xn=-100;yn=-100;xx=100;yx=100;}
 
-  // HEADER (R12)
+  // HEADER
   d+=g(0,'SECTION')+g(2,'HEADER');
-  d+=g(9,'$ACADVER')+g(1,'AC1009');
+  d+=g(9,'$ACADVER')+g(1,'AC1014');
   d+=g(9,'$INSUNITS')+g(70,6);
   d+=g(9,'$INSBASE')+g(10,insBase[0].toFixed(4))+g(20,insBase[1].toFixed(4))+g(30,'0.0');
   d+=g(9,'$EXTMIN')+g(10,xn.toFixed(4))+g(20,yn.toFixed(4))+g(30,'0.0');
@@ -186,32 +186,31 @@ function makeDxf(layers, polylines, texts, points, insBase) {
 
   // TABLES
   d+=g(0,'SECTION')+g(2,'TABLES');
-  d+=g(0,'TABLE')+g(2,'LTYPE')+g(70,1);
-  d+=g(0,'LTYPE')+g(2,'CONTINUOUS')+g(70,0)+g(3,'Solid line')+g(72,65)+g(73,0)+g(40,'0.0');
+  d+=g(0,'TABLE')+g(2,'LTYPE')+g(5,nh())+g(70,1);
+  d+=g(0,'LTYPE')+g(5,nh())+g(2,'CONTINUOUS')+g(70,0)+g(3,'Solid line')+g(72,65)+g(73,0)+g(40,'0.0');
   d+=g(0,'ENDTAB');
-  d+=g(0,'TABLE')+g(2,'LAYER')+g(70,layers.length);
-  for(const l of layers) d+=g(0,'LAYER')+g(2,l.name)+g(70,0)+g(62,l.color)+g(6,'CONTINUOUS');
+  d+=g(0,'TABLE')+g(2,'LAYER')+g(5,nh())+g(70,layers.length);
+  for(const l of layers) d+=g(0,'LAYER')+g(5,nh())+g(2,l.name)+g(70,0)+g(62,l.color)+g(6,'CONTINUOUS');
   d+=g(0,'ENDTAB');
   d+=g(0,'ENDSEC');
 
   // BLOCKS
   d+=g(0,'SECTION')+g(2,'BLOCKS')+g(0,'ENDSEC');
 
-  // ENTITIES (R12: POLYLINE/VERTEX/SEQEND)
+  // ENTITIES (LWPOLYLINE — compact)
   d+=g(0,'SECTION')+g(2,'ENTITIES');
 
   for(const p of polylines) {
-    d+=g(0,'POLYLINE')+g(8,p.layer)+g(66,1)+g(70,p.closed?1:0);
-    for(const v of p.pts) d+=g(0,'VERTEX')+g(8,p.layer)+g(10,v[0].toFixed(4))+g(20,v[1].toFixed(4));
-    d+=g(0,'SEQEND')+g(8,p.layer);
+    d+=g(0,'LWPOLYLINE')+g(5,nh())+g(8,p.layer)+g(90,p.pts.length)+g(70,p.closed?1:0);
+    for(const v of p.pts) d+=g(10,v[0].toFixed(3))+g(20,v[1].toFixed(3));
   }
 
   for(const t of texts) {
-    d+=g(0,'TEXT')+g(8,t.layer)+g(10,t.x.toFixed(4))+g(20,t.y.toFixed(4))+g(40,t.h.toFixed(2))+g(1,t.text);
+    d+=g(0,'TEXT')+g(5,nh())+g(8,t.layer)+g(10,t.x.toFixed(3))+g(20,t.y.toFixed(3))+g(40,t.h.toFixed(2))+g(1,t.text);
   }
 
   for(const p of points) {
-    d+=g(0,'POINT')+g(8,p.layer)+g(10,p.x.toFixed(4))+g(20,p.y.toFixed(4));
+    d+=g(0,'POINT')+g(5,nh())+g(8,p.layer)+g(10,p.x.toFixed(3))+g(20,p.y.toFixed(3));
   }
 
   d+=g(0,'ENDSEC')+g(0,'EOF');
@@ -223,7 +222,7 @@ async function geocode(a){const r=await fetch(`https://api-adresse.data.gouv.fr/
 async function getFeuilles(lon,lat){const r=await fetch(`https://apicarto.ign.fr/api/cadastre/feuille?geom=${JSON.stringify({type:'Point',coordinates:[lon,lat]})}`);const d=await r.json();if(!d.features?.length)throw new Error('Aucune feuille');return d.features}
 async function getFeuillesRadius(lon,lat,radius){if(radius<=0)return getFeuilles(lon,lat);const dl=radius/111320,dn=radius/(111320*Math.cos(rad(lat)));const r=await fetch(`https://apicarto.ign.fr/api/cadastre/feuille?geom=${JSON.stringify({type:'Polygon',coordinates:[[[lon-dn,lat-dl],[lon+dn,lat-dl],[lon+dn,lat+dl],[lon-dn,lat+dl],[lon-dn,lat-dl]]]})}`);const d=await r.json();if(!d.features?.length)throw new Error('Aucune feuille dans le rayon');return d.features}
 async function getParcelles(code,sec){const r=await fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?code_insee=${code}&section=${sec}`);return(await r.json()).features||[]}
-async function getBatiments(bb){const r=await fetch(`https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typenames=BDTOPO_V3:batiment&outputFormat=application/json&bbox=${bb.join(',')},EPSG:4326&count=1000`);return(await r.json()).features||[]}
+async function getBatiments(bb){const r=await fetch(`https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typenames=BDTOPO_V3:batiment&outputFormat=application/json&bbox=${bb.join(',')},EPSG:4326&count=2000`);return(await r.json()).features||[]}
 
 // ── HELPERS ──────────────────────────────────────────────────
 function flatC(g){const r=[];(function w(a){if(typeof a[0]==='number'){r.push(a);return}for(const x of a)w(x)})(g.coordinates);return r}
