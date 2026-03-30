@@ -201,15 +201,17 @@ function lccProject(lon, lat, zone) {
 // DXF GENERATOR
 // ============================================================
 class DxfWriter {
-  constructor() { this.handle = 100; this.entities = []; this.layers = new Map(); }
+  constructor() { this.handle = 100; this.entities = []; this.layers = new Map(); this.insBase = [0,0]; this.allPts = []; }
   nextHandle() { return (this.handle++).toString(16).toUpperCase(); }
   addLayer(name, color) { this.layers.set(name, color); }
+  setInsBase(x, y) { this.insBase = [x, y]; }
+  trackPt(x, y) { this.allPts.push([x, y]); }
   g(code, value) { return `  ${code}\r\n${value}\r\n`; }
 
   addLwPolyline(layer, points, closed = true) {
     const h = this.nextHandle();
     let e = this.g(0,'LWPOLYLINE')+this.g(5,h)+this.g(100,'AcDbEntity')+this.g(8,layer)+this.g(100,'AcDbPolyline')+this.g(90,points.length)+this.g(70,closed?1:0);
-    for (const p of points) e += this.g(10,p[0].toFixed(4))+this.g(20,p[1].toFixed(4));
+    for (const p of points) { e += this.g(10,p[0].toFixed(4))+this.g(20,p[1].toFixed(4)); this.trackPt(p[0],p[1]); }
     this.entities.push(e);
   }
 
@@ -224,8 +226,20 @@ class DxfWriter {
   }
 
   generate() {
+    // Compute extents
+    let xmin=Infinity,ymin=Infinity,xmax=-Infinity,ymax=-Infinity;
+    for(const p of this.allPts){xmin=Math.min(xmin,p[0]);ymin=Math.min(ymin,p[1]);xmax=Math.max(xmax,p[0]);ymax=Math.max(ymax,p[1]);}
+    if(!isFinite(xmin)){xmin=-100;ymin=-100;xmax=100;ymax=100;}
     let d = '';
-    d += this.g(0,'SECTION')+this.g(2,'HEADER')+this.g(9,'$ACADVER')+this.g(1,'AC1027')+this.g(9,'$INSUNITS')+this.g(70,6)+this.g(0,'ENDSEC');
+    d += this.g(0,'SECTION')+this.g(2,'HEADER');
+    d += this.g(9,'$ACADVER')+this.g(1,'AC1027');
+    d += this.g(9,'$INSUNITS')+this.g(70,6);
+    d += this.g(9,'$INSBASE')+this.g(10,this.insBase[0].toFixed(4))+this.g(20,this.insBase[1].toFixed(4))+this.g(30,'0.0');
+    d += this.g(9,'$EXTMIN')+this.g(10,xmin.toFixed(4))+this.g(20,ymin.toFixed(4))+this.g(30,'0.0');
+    d += this.g(9,'$EXTMAX')+this.g(10,xmax.toFixed(4))+this.g(20,ymax.toFixed(4))+this.g(30,'0.0');
+    d += this.g(9,'$LIMMIN')+this.g(10,xmin.toFixed(4))+this.g(20,ymin.toFixed(4));
+    d += this.g(9,'$LIMMAX')+this.g(10,xmax.toFixed(4))+this.g(20,ymax.toFixed(4));
+    d += this.g(0,'ENDSEC');
     d += this.g(0,'SECTION')+this.g(2,'TABLES');
     d += this.g(0,'TABLE')+this.g(2,'VPORT')+this.g(5,this.nextHandle())+this.g(70,0)+this.g(0,'ENDTAB');
     d += this.g(0,'TABLE')+this.g(2,'LTYPE')+this.g(5,this.nextHandle())+this.g(70,1)+this.g(0,'LTYPE')+this.g(5,this.nextHandle())+this.g(2,'Continuous')+this.g(70,0)+this.g(3,'Solid line')+this.g(72,65)+this.g(73,0)+this.g(40,'0.0')+this.g(0,'ENDTAB');
@@ -339,15 +353,25 @@ async function generate() {
     log('Generation DXF...');
     const dxf = new DxfWriter();
     dxf.addLayer('PARCELLES',7); dxf.addLayer('BATIMENTS',1); dxf.addLayer('NUMEROS',3); dxf.addLayer('SECTIONS',5); dxf.addLayer('ORIGINE',6);
-    dxf.addPoint('ORIGINE', origin.x, origin.y);
+
+    // Recentrer autour de l'origine (0,0) pour compatibilite maximale
+    const ox = origin.x, oy = origin.y;
+    const rel = (c) => { const pr = lccProject(c[0],c[1],zone); return [pr.x - ox, pr.y - oy]; };
+
+    // Stocker l'offset dans le header DXF
+    dxf.setInsBase(ox, oy);
+
+    // Point origine a (0,0) dans le DXF
+    dxf.addPoint('ORIGINE', 0, 0);
+    dxf.addText('ORIGINE', 2, -3, 1.5, `Origine: X=${ox.toFixed(3)} Y=${oy.toFixed(3)} (${zone})`);
 
     for (const p of allParcelles) {
-      for (const ring of rings(p.geometry)) dxf.addLwPolyline('PARCELLES', ring.map(c=>{const pr=lccProject(c[0],c[1],zone);return[pr.x,pr.y]}), true);
+      for (const ring of rings(p.geometry)) dxf.addLwPolyline('PARCELLES', ring.map(c => rel(c)), true);
       const ctr = centroid(p.geometry), cp = lccProject(ctr[0],ctr[1],zone);
-      if (p.properties.numero) dxf.addText('NUMEROS', cp.x, cp.y, 1.5, p.properties.numero);
+      if (p.properties.numero) dxf.addText('NUMEROS', cp.x - ox, cp.y - oy, 1.5, p.properties.numero);
     }
-    for (const f of feuilles) { const ctr=centroid(f.geometry), cp=lccProject(ctr[0],ctr[1],zone); dxf.addText('SECTIONS', cp.x, cp.y, 3, f.properties.section); }
-    for (const b of batiments) for (const ring of rings(b.geometry)) dxf.addLwPolyline('BATIMENTS', ring.map(c=>{const pr=lccProject(c[0],c[1],zone);return[pr.x,pr.y]}), true);
+    for (const f of feuilles) { const ctr=centroid(f.geometry), cp=lccProject(ctr[0],ctr[1],zone); dxf.addText('SECTIONS', cp.x - ox, cp.y - oy, 3, f.properties.section); }
+    for (const b of batiments) for (const ring of rings(b.geometry)) dxf.addLwPolyline('BATIMENTS', ring.map(c => rel(c)), true);
 
     lastDxfContent = dxf.generate();
     lastFilename = `cadastre_${geo.city||'export'}_${zone}_${new Date().toISOString().slice(0,10)}.dxf`;
